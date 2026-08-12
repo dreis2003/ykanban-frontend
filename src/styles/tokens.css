@@ -1,0 +1,136 @@
+/**
+ * Design tokens do YKanban.
+ *
+ * Direção visual: "workshop de precisão" — ferramenta interna de produtividade,
+ * densa e objetiva. Fundo grafite/papel neutro, acento vermelho (referência discreta
+ * à Yakuza Studio), bordas finas em vez de sombras pesadas, tipografia de sistema.
+ *
+ * Tema claro é o padrão em :root; tema escuro entra via prefers-color-scheme e,
+ * futuramente, via [data-theme] quando um seletor manual de tema for implementado.
+ */
+
+:root {
+  /* Cor — superfícies */
+  --color-bg: #f7f5f2;
+  --color-bg-elevated: #ffffff;
+  --color-bg-sunken: #edeae4;
+  --color-border: #ddd8d0;
+  --color-border-strong: #c7c0b4;
+
+  /* Cor — texto */
+  --color-text: #18140f;
+  --color-text-muted: #6b6459;
+  --color-text-on-accent: #fff8f5;
+
+  /* Cor — acento e estados semânticos (sempre reforçados por texto/ícone, nunca só cor) */
+  --color-accent: #b3261e;
+  --color-accent-hover: #942019;
+  --color-success: #2f6b3a;
+  --color-success-bg: #e4efe2;
+  --color-danger: #b3261e;
+  --color-danger-bg: #f6e3e1;
+  --color-warning: #8a5a12;
+  --color-warning-bg: #f5ecd9;
+
+  --color-focus-ring: rgba(179, 38, 30, 0.4);
+
+  /* Tipografia */
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', Helvetica, Arial,
+    sans-serif;
+  --font-mono:
+    ui-monospace, 'Cascadia Code', 'Consolas', 'SFMono-Regular', 'Liberation Mono', monospace;
+
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.75rem;
+  --font-size-2xl: 2.5rem;
+
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.55;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+
+  /* Espaçamento (escala base 4px) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* Forma */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-full: 999px;
+  --border-width: 1px;
+
+  /* Elevação — discreta, o peso vem das bordas, não das sombras */
+  --shadow-sm: 0 1px 2px rgba(24, 20, 15, 0.06);
+  --shadow-md: 0 6px 20px rgba(24, 20, 15, 0.08);
+
+  /* Movimento */
+  --transition-fast: 120ms ease;
+  --transition-base: 200ms ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-bg: #131110;
+    --color-bg-elevated: #1c1917;
+    --color-bg-sunken: #0b0a09;
+    --color-border: #2d2925;
+    --color-border-strong: #45403a;
+
+    --color-text: #f3ede4;
+    --color-text-muted: #a89e8f;
+    --color-text-on-accent: #1a0705;
+
+    --color-accent: #e8483d;
+    --color-accent-hover: #f0655c;
+    --color-success: #74b482;
+    --color-success-bg: #16261a;
+    --color-danger: #e8483d;
+    --color-danger-bg: #2c1512;
+    --color-warning: #d9a441;
+    --color-warning-bg: #2b2110;
+
+    --color-focus-ring: rgba(232, 72, 61, 0.45);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+}
+
+:root[data-theme='dark'] {
+  --color-bg: #131110;
+  --color-bg-elevated: #1c1917;
+  --color-bg-sunken: #0b0a09;
+  --color-border: #2d2925;
+  --color-border-strong: #45403a;
+
+  --color-text: #f3ede4;
+  --color-text-muted: #a89e8f;
+  --color-text-on-accent: #1a0705;
+
+  --color-accent: #e8483d;
+  --color-accent-hover: #f0655c;
+  --color-success: #74b482;
+  --color-success-bg: #16261a;
+  --color-danger: #e8483d;
+  --color-danger-bg: #2c1512;
+  --color-warning: #d9a441;
+  --color-warning-bg: #2b2110;
+
+  --color-focus-ring: rgba(232, 72, 61, 0.45);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+}

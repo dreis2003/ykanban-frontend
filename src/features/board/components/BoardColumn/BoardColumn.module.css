@@ -1,0 +1,112 @@
+.column {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 16rem;
+  min-width: 16rem;
+  max-height: 100%;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg-elevated);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-bottom: var(--border-width) solid var(--color-border);
+  background-color: var(--color-bg-sunken);
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  overflow-wrap: break-word;
+}
+
+.count {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  background-color: var(--color-bg-elevated);
+  border-radius: var(--radius-full);
+  padding: 0 0.5em;
+}
+
+.wipLimit {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.editButton {
+  appearance: none;
+  flex: 0 0 auto;
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  padding: var(--space-1);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.editButton:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.createCardButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  appearance: none;
+  border: none;
+  border-bottom: var(--border-width) solid var(--color-border);
+  background-color: transparent;
+  color: var(--color-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-3);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.createCardButton:hover {
+  background-color: var(--color-bg-sunken);
+}
+
+.body {
+  flex: 1;
+  padding: var(--space-3);
+  overflow-y: auto;
+}
+
+.cardList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.emptyState {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  text-align: center;
+  padding: var(--space-4) 0;
+}

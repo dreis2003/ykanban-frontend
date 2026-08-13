@@ -7,6 +7,8 @@
 .header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
   padding: var(--space-4) var(--space-5);
   border-bottom: var(--border-width) solid var(--color-border);
   background-color: var(--color-bg-elevated);
@@ -49,6 +51,52 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-text-muted);
+}
+
+.session {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: var(--line-height-tight);
+}
+
+.userName {
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+}
+
+.userRole {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.logout {
+  appearance: none;
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.logout:hover {
+  border-color: var(--color-accent);
+  background-color: var(--color-bg-sunken);
 }
 
 .main {

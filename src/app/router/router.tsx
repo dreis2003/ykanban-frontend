@@ -1,20 +1,28 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { MainLayout } from '@/layouts/MainLayout/MainLayout'
-import { HomePage } from '@/app/pages/HomePage/HomePage'
+import { LoginPage } from '@/app/pages/LoginPage/LoginPage'
 import { NotFoundPage } from '@/app/pages/NotFoundPage/NotFoundPage'
+import { ProjectDetailPage } from '@/app/pages/ProjectDetailPage/ProjectDetailPage'
+import { ProjectsPage } from '@/app/pages/ProjectsPage/ProjectsPage'
+import { RequireAuth } from '@/features/auth/RequireAuth'
 import { ROUTES } from '@/app/router/routes'
 
 /**
- * Rotas públicas e autenticadas ainda não são diferenciadas nesta etapa — toda
- * a árvore hoje é pública. Quando a autenticação for implementada, um elemento
- * de guarda (ex.: RequireAuth) entra entre MainLayout e as rotas protegidas,
- * e autorização por role decorará rotas individuais a partir daí.
+ * `/login` é a única rota pública. `/projects` é o destino pós-login (ver Prompt 04) — `/`
+ * apenas redireciona para lá; não há mais uma "home" própria.
  */
 export const router = createBrowserRouter([
+  { path: ROUTES.login, element: <LoginPage /> },
   {
-    element: <MainLayout />,
+    element: (
+      <RequireAuth>
+        <MainLayout />
+      </RequireAuth>
+    ),
     children: [
-      { path: ROUTES.home, element: <HomePage /> },
+      { path: ROUTES.home, element: <Navigate to={ROUTES.projects} replace /> },
+      { path: ROUTES.projects, element: <ProjectsPage /> },
+      { path: '/projects/:projectId', element: <ProjectDetailPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

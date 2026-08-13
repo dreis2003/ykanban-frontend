@@ -1,0 +1,20 @@
+.status {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15em 0.6em;
+  border-radius: var(--radius-full);
+  color: var(--color-text-muted);
+  background-color: var(--color-bg-sunken);
+}
+
+.status[data-status='ACTIVE'] {
+  color: var(--color-success);
+  background-color: var(--color-success-bg);
+}
+
+.status[data-status='ARCHIVED'] {
+  color: var(--color-text-muted);
+  background-color: var(--color-bg-sunken);
+}

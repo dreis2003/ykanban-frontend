@@ -1,0 +1,69 @@
+.dialog {
+  width: 100%;
+  max-width: 26rem;
+  padding: var(--space-6);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text);
+  box-shadow: var(--shadow-md);
+}
+
+.dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.45);
+}
+
+.title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--space-3);
+}
+
+.description {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.cancel,
+.confirm {
+  appearance: none;
+  border-radius: var(--radius-md);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+}
+
+.cancel {
+  border: var(--border-width) solid var(--color-border-strong);
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text);
+}
+
+.cancel:hover:not(:disabled) {
+  background-color: var(--color-bg-sunken);
+}
+
+.confirm {
+  border: none;
+  background-color: var(--color-danger);
+  color: var(--color-text-on-accent);
+}
+
+.confirm:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.cancel:disabled,
+.confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

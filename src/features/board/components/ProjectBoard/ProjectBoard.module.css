@@ -1,0 +1,15 @@
+.wrapper {
+  width: 100%;
+}
+
+.board {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  overflow-x: auto;
+  padding-bottom: var(--space-3);
+}
+
+.board > [role='listitem'] {
+  height: 100%;
+}

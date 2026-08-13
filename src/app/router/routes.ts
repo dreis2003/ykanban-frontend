@@ -1,7 +1,10 @@
 /**
- * Caminhos centralizados da aplicação. Rotas de autenticação, projetos e board
- * entram aqui junto das respectivas features — não criadas nesta etapa.
+ * Caminhos centralizados da aplicação. Rotas de board/card entram aqui junto
+ * da respectiva feature — não criadas nesta etapa.
  */
 export const ROUTES = {
   home: '/',
+  login: '/login',
+  projects: '/projects',
+  projectDetail: (id: string) => `/projects/${id}`,
 } as const

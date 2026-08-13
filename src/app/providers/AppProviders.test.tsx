@@ -1,15 +1,39 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { AppProviders } from '@/app/providers/AppProviders'
+import { authSession } from '@/shared/api/authSession'
 
-function mockFetchOnce(response: Partial<Response> & { json?: () => Promise<unknown> }) {
+const AUTH_USER = { id: 'u1', name: 'Ana', email: 'ana@ykanban.dev', role: 'DEVELOPER' }
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: new Headers({ 'content-type': 'application/json' }),
+    json: () => Promise.resolve(body),
+  } as Response
+}
+
+function mockAuthenticatedSession() {
   vi.stubGlobal(
     'fetch',
-    vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers({ 'content-type': 'application/json' }),
-      ...response,
+    vi.fn((input: RequestInfo | URL) => {
+      const url = input.toString()
+      if (url.includes('/auth/refresh')) {
+        return Promise.resolve(jsonResponse({ accessToken: 't', expiresIn: 900 }))
+      }
+      if (url.includes('/auth/me')) {
+        return Promise.resolve(jsonResponse(AUTH_USER))
+      }
+      if (url.includes('/projects/summary')) {
+        return Promise.resolve(jsonResponse({ total: 0, active: 0, archived: 0 }))
+      }
+      if (url.includes('/projects?')) {
+        return Promise.resolve(
+          jsonResponse({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
+        )
+      }
+      return Promise.reject(new Error(`fetch inesperado: ${url}`))
     }),
   )
 }
@@ -17,29 +41,32 @@ function mockFetchOnce(response: Partial<Response> & { json?: () => Promise<unkn
 describe('AppProviders', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
+    authSession.setAccessToken(null)
   })
 
-  it('inicializa a aplicação, renderiza o layout e confirma o backend conectado', async () => {
-    mockFetchOnce({ json: () => Promise.resolve({ status: 'UP' }) })
+  it('restaura a sessão e redireciona para /projects, mostrando o layout autenticado', async () => {
+    mockAuthenticatedSession()
 
     render(<AppProviders />)
-
-    expect(screen.getByText('Yakuza Studio')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: 'YKanban' })).toBeInTheDocument()
 
     await waitFor(() => {
-      expect(screen.getByText('Backend conectado')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 1, name: 'Projetos' })).toBeInTheDocument()
     })
-    expect(screen.getByText('UP')).toBeInTheDocument()
+    expect(screen.getByText('Yakuza Studio')).toBeInTheDocument()
+    expect(screen.getByText('Ana')).toBeInTheDocument()
+    expect(await screen.findByText('Nenhum projeto cadastrado')).toBeInTheDocument()
   })
 
-  it('mostra estado de erro com opção de tentar novamente quando o backend está indisponível', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+  it('redireciona para /login quando não há sessão restaurável', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse({ title: 'Sessão inválida ou expirada.', status: 401 }, 401)),
+    )
 
     render(<AppProviders />)
 
-    const errorMessage = await screen.findByText('Backend indisponível')
-    expect(errorMessage).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Tentar novamente' })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: 'Entrar' })).toBeInTheDocument()
+    })
   })
 })

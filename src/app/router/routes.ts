@@ -1,10 +1,8 @@
-/**
- * Caminhos centralizados da aplicação. Rotas de board/card entram aqui junto
- * da respectiva feature — não criadas nesta etapa.
- */
+/** Caminhos centralizados da aplicação. */
 export const ROUTES = {
   home: '/',
   login: '/login',
   projects: '/projects',
   projectDetail: (id: string) => `/projects/${id}`,
+  cardDetail: (projectId: string, cardId: string) => `/projects/${projectId}/cards/${cardId}`,
 } as const

@@ -120,4 +120,6 @@ export const httpClient = {
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
       ...options,
     }),
+  delete: <T>(path: string, options?: RequestOptions) =>
+    request<T>(path, { method: 'DELETE', ...options }),
 }

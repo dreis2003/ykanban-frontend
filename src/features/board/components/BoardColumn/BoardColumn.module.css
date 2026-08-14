@@ -1,9 +1,9 @@
 .column {
   display: flex;
   flex-direction: column;
-  flex: 0 0 16rem;
-  min-width: 16rem;
-  max-height: 100%;
+  flex: 0 0 18rem;
+  min-width: 18rem;
+  height: 100%;
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-lg);
   background-color: var(--color-bg-elevated);
@@ -54,6 +54,11 @@
   color: var(--color-text-muted);
 }
 
+.wipLimit[data-at-limit='true'] {
+  color: var(--color-warning);
+  font-weight: var(--font-weight-medium);
+}
+
 .editButton {
   appearance: none;
   flex: 0 0 auto;
@@ -96,12 +101,32 @@
   flex: 1;
   padding: var(--space-3);
   overflow-y: auto;
+  border: var(--border-width) dashed transparent;
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.body[data-drop-active='true'] {
+  border-color: var(--color-accent);
+  background-color: var(--color-bg-sunken);
+}
+
+.body[data-drop-blocked='true'] {
+  border-color: var(--color-danger);
+  background-color: var(--color-danger-bg);
 }
 
 .cardList {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sortableItem[data-dragging='true'] {
+  opacity: 0.4;
 }
 
 .emptyState {

@@ -8,6 +8,15 @@ export interface CardColumnSummary {
   name: string
 }
 
+export interface AcceptanceCriterion {
+  id: string
+  description: string
+  completed: boolean
+  position: number
+  createdAt: string
+  updatedAt: string
+}
+
 export interface Card {
   id: string
   key: string
@@ -19,8 +28,21 @@ export interface Card {
   projectId: string
   column: CardColumnSummary
   position: number
+  acceptanceCriteria: AcceptanceCriterion[]
   createdAt: string
   updatedAt: string
+}
+
+export interface CreateAcceptanceCriterionRequest {
+  description: string
+}
+
+export interface UpdateAcceptanceCriterionRequest {
+  description: string
+}
+
+export interface MoveAcceptanceCriterionRequest {
+  targetPosition: number
 }
 
 export interface CreateCardRequest {
@@ -35,6 +57,11 @@ export interface UpdateCardRequest {
   description?: string
   type: CardType
   priority: CardPriority
+}
+
+export interface MoveCardRequest {
+  targetColumnId: string
+  targetPosition: number
 }
 
 export interface ListCardsParams {

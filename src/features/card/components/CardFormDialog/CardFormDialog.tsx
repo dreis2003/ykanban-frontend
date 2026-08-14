@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { CARD_PRIORITY_OPTIONS, CARD_TYPE_OPTIONS } from '@/features/card/labels'
 import type { Card, CardPriority, CardType } from '@/features/card/types'
 import styles from './CardFormDialog.module.css'
@@ -59,9 +59,16 @@ export function CardFormDialog({ mode, open, card, isSubmitting, errorMessage, o
     onSubmit({ title: title.trim(), description: description.trim(), type, priority })
   }
 
+  function handleKeyDown(event: KeyboardEvent<HTMLFormElement>) {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      event.preventDefault()
+      event.currentTarget.requestSubmit()
+    }
+  }
+
   return (
     <dialog ref={dialogRef} className={styles.dialog} onCancel={onClose}>
-      <form className={styles.form} onSubmit={handleSubmit} noValidate>
+      <form className={styles.form} onSubmit={handleSubmit} onKeyDown={handleKeyDown} noValidate>
         <h2 className={styles.title}>{mode === 'create' ? 'Novo card' : 'Editar card'}</h2>
 
         <div className={styles.field}>

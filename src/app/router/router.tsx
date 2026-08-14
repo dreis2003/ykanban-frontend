@@ -23,6 +23,7 @@ export const router = createBrowserRouter([
       { path: ROUTES.home, element: <Navigate to={ROUTES.projects} replace /> },
       { path: ROUTES.projects, element: <ProjectsPage /> },
       { path: '/projects/:projectId', element: <ProjectDetailPage /> },
+      { path: '/projects/:projectId/cards/:cardId', element: <ProjectDetailPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

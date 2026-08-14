@@ -1,8 +1,9 @@
 # YKanban — Frontend
 
 Frontend do YKanban: React 19 + TypeScript + Vite, arquitetura orientada a features. Autenticação
-(login/sessão), dashboard de projetos, Board com colunas e Cards já implementados; ver
-`agent_docs/` na raiz do repositório para o roadmap completo.
+(login/sessão), dashboard de projetos, Board com colunas, Cards com drag-and-drop entre colunas e
+Critérios de Aceite já implementados; ver `agent_docs/` na raiz do repositório para o roadmap
+completo.
 
 ## Requisitos
 
@@ -107,8 +108,9 @@ src/
   features/
     auth/             AuthProvider/useAuth, RequireAuth (guard de rota), authApi
     projects/         tipos, projectsApi, ProjectCard, ProjectFormDialog, ProjectsSummary
-    board/            tipos, boardApi, ProjectBoard, BoardColumn, EditColumnDialog
-    card/             tipos, cardApi, labels PT-BR, KanbanCard, CardFormDialog, CardDetailDialog
+    board/            tipos, boardApi, ProjectBoard, BoardColumn, EditColumnDialog, useCardDragAndDrop
+    card/             tipos, cardApi, acceptanceCriteriaApi, labels PT-BR, KanbanCard,
+                      CardFormDialog, CardDetailDialog, AcceptanceCriteriaSection
   styles/           design tokens e estilos globais
 ```
 
@@ -141,8 +143,21 @@ Alias de import: `@/*` aponta para `src/*`.
 - Cards do Board são carregados de uma vez (`size=200`) e agrupados por coluna no cliente —
   aceitável na escala atual; a paginação real já existe no backend (`GET .../cards`) para quando
   for necessária.
+- Drag-and-drop: `@dnd-kit` (`core`/`sortable`/`utilities`) — mantida ativamente, sensor de teclado
+  nativo, suporte documentado a múltiplos containers (colunas do board). Sensores separados por
+  dispositivo (`MouseSensor` com distância mínima, `TouchSensor` com long-press) evitam roubar o
+  scroll nativo em touch. Toda a lógica de arrasto do board vive em `useCardDragAndDrop` (hook
+  puro, testável sem simular gestos de ponteiro); a lista de Critérios de Aceite reordena com
+  `arrayMove` direto, sem reaproveitar esse hook (problema estruturalmente mais simples — um único
+  container, não múltiplas colunas).
+- Optimistic update de movimentação escreve o cache do React Query **sincronamente** dentro do
+  mesmo evento de soltar o Card (sem `await` antes) — um `cancelQueries` aguardado antes da escrita
+  causava um frame intermediário com o cache antigo, fazendo o Card "voltar" visualmente para a
+  coluna de origem antes de assentar no destino.
+- Remoção de Critério de Aceite reaproveita o `ConfirmDialog` genérico (mesmo usado para arquivar
+  projeto) em vez de um padrão de confirmação novo.
 
 ## Pendências / próxima etapa
 
-- Movimentação de Card entre colunas / drag-and-drop e refinamento visual (Prompt 08).
+- Labels dos Cards (Prompt 11).
 - Autorização por role em nível de projeto (hoje é global — infraestrutura pronta via `AuthUser.role`).

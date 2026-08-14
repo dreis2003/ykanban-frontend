@@ -1,15 +1,93 @@
 .wrapper {
   width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.toolbarTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.newCardButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  appearance: none;
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.newCardButton:hover {
+  background-color: var(--color-accent-hover);
+}
+
+.retryButton {
+  appearance: none;
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+}
+
+.retryButton:hover {
+  background-color: var(--color-bg-sunken);
 }
 
 .board {
+  flex: 1;
+  min-height: 0;
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   gap: var(--space-4);
   overflow-x: auto;
   padding-bottom: var(--space-3);
 }
 
 .board > [role='listitem'] {
+  display: flex;
   height: 100%;
+}
+
+.skeletonColumn {
+  flex: 0 0 18rem;
+  min-width: 18rem;
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg-elevated);
+  border: var(--border-width) solid var(--color-border);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }

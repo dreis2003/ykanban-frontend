@@ -39,6 +39,12 @@
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-normal);
   overflow-wrap: break-word;
+  /* Limita a altura visual sem truncar o dado real — o título completo aparece nos detalhes. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
 }
 
 .meta {
@@ -71,4 +77,19 @@
 .priority[data-priority='CRITICAL'] {
   color: var(--color-danger);
   background-color: var(--color-danger-bg);
+}
+
+.criteriaProgress {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+
+.criteriaProgress[data-complete='true'] {
+  color: var(--color-success);
 }

@@ -1,6 +1,6 @@
 import { httpClient } from '@/shared/api/httpClient'
 import type { PageResponse } from '@/shared/types/pageResponse'
-import type { Card, CreateCardRequest, ListCardsParams, UpdateCardRequest } from '@/features/card/types'
+import type { Card, CreateCardRequest, ListCardsParams, MoveCardRequest, UpdateCardRequest } from '@/features/card/types'
 
 const DEFAULT_PAGE_SIZE = 200
 
@@ -28,4 +28,5 @@ export const cardApi = {
   create: (projectId: string, payload: CreateCardRequest) =>
     httpClient.post<Card>(`/projects/${projectId}/cards`, payload),
   update: (cardId: string, payload: UpdateCardRequest) => httpClient.patch<Card>(`/cards/${cardId}`, payload),
+  move: (cardId: string, payload: MoveCardRequest) => httpClient.post<Card>(`/cards/${cardId}/move`, payload),
 }

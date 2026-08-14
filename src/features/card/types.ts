@@ -17,6 +17,12 @@ export interface AcceptanceCriterion {
   updatedAt: string
 }
 
+export interface CardLabelSummary {
+  id: string
+  name: string
+  color: string
+}
+
 export interface Card {
   id: string
   key: string
@@ -29,6 +35,7 @@ export interface Card {
   column: CardColumnSummary
   position: number
   acceptanceCriteria: AcceptanceCriterion[]
+  labels: CardLabelSummary[]
   createdAt: string
   updatedAt: string
 }

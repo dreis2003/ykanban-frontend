@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Pencil } from 'lucide-react'
 import { AcceptanceCriteriaSection } from '@/features/card/components/AcceptanceCriteriaSection/AcceptanceCriteriaSection'
+import { CardLabelsSection } from '@/features/card/components/CardLabelsSection/CardLabelsSection'
 import { CARD_PRIORITY_LABELS, CARD_TYPE_LABELS } from '@/features/card/labels'
 import { formatDate } from '@/shared/utils/formatDate'
 import { StatusMessage } from '@/shared/components/StatusMessage/StatusMessage'
@@ -13,6 +14,7 @@ interface Props {
   isLoading?: boolean
   isError?: boolean
   canManage: boolean
+  canManageLabelsCatalog: boolean
   onEdit: () => void
   onClose: () => void
 }
@@ -23,7 +25,16 @@ interface Props {
  * Aberto/fechado é sincronizado com a URL pelo ProjectBoard (ver rota
  * /projects/:projectId/cards/:cardId), então também funciona por link direto/reload.
  */
-export function CardDetailDialog({ open, card, isLoading, isError, canManage, onEdit, onClose }: Props) {
+export function CardDetailDialog({
+  open,
+  card,
+  isLoading,
+  isError,
+  canManage,
+  canManageLabelsCatalog,
+  onEdit,
+  onClose,
+}: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -81,6 +92,14 @@ export function CardDetailDialog({ open, card, isLoading, isError, canManage, on
                 <dd>{formatDate(card.updatedAt)}</dd>
               </div>
             </dl>
+
+            <CardLabelsSection
+              cardId={card.id}
+              projectId={card.projectId}
+              labels={card.labels}
+              canAssign={canManage}
+              canManageCatalog={canManageLabelsCatalog}
+            />
 
             <AcceptanceCriteriaSection
               cardId={card.id}

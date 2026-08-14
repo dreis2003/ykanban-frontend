@@ -103,6 +103,7 @@ function cardOf(
     column: { id: columnId, type: columnType, name: columnName },
     position,
     acceptanceCriteria: [] as unknown[],
+    labels: [] as unknown[],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-05T00:00:00Z',
   }
@@ -734,6 +735,190 @@ describe('ProjectDetailPage', () => {
       await screen.findByText('Backlog')
 
       expect(await screen.findByText('2/3')).toBeInTheDocument()
+    })
+  })
+
+  describe('Labels', () => {
+    function labelOf(id: string, name: string, color: string) {
+      return { id, name, color, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' }
+    }
+
+    it('mostra as labels do card no KanbanCard, limitando a 3 visíveis com "+N"', async () => {
+      const labels = [
+        labelOf('l1', 'Backend', '#3B82F6'),
+        labelOf('l2', 'Security', '#EF4444'),
+        labelOf('l3', 'DevOps', '#F59E0B'),
+        labelOf('l4', 'Urgent', '#EC4899'),
+      ]
+      const cardWithLabels = { ...CARD_BACKLOG_1, labels }
+      mockFetchRouter(
+        boardAndProjectHandlers(BOARD, PROJECT, pageOf([CARD_BACKLOG_2, cardWithLabels, CARD_DOING]), {
+          card1: cardWithLabels,
+        }),
+      )
+
+      renderDetailPage('p1')
+      await screen.findByText('Backlog')
+
+      expect(screen.getByText('Backend')).toBeInTheDocument()
+      expect(screen.getByText('Security')).toBeInTheDocument()
+      expect(screen.getByText('DevOps')).toBeInTheDocument()
+      expect(screen.queryByText('Urgent')).not.toBeInTheDocument()
+      expect(screen.getByText('+1')).toBeInTheDocument()
+    })
+
+    it('permite associar uma label existente ao card pelo seletor', async () => {
+      const user = userEvent.setup()
+      const backend = labelOf('l1', 'Backend', '#3B82F6')
+      let card = { ...CARD_BACKLOG_1 }
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+          const url = input.toString()
+          const method = (init?.method ?? 'GET').toUpperCase()
+          if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
+          if (method === 'GET' && url.includes('/projects/p1/labels')) return Promise.resolve(jsonResponse([backend]))
+          if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(card))
+          if (method === 'POST' && url.includes('/cards/card1/labels/l1')) {
+            card = { ...card, labels: [backend] }
+            return Promise.resolve(jsonResponse([backend]))
+          }
+          return Promise.reject(new Error(`fetch inesperado: ${method} ${url}`))
+        }),
+      )
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Primeiro card do backlog')
+      await user.click(within(dialog).getByRole('button', { name: 'Adicionar label' }))
+      await user.click(await within(dialog).findByRole('button', { name: /Backend/ }))
+
+      expect(await within(dialog).findByText('Backend')).toBeInTheDocument()
+    })
+
+    it('remove uma label do card e reverte em caso de erro do backend', async () => {
+      const user = userEvent.setup()
+      const backend = labelOf('l1', 'Backend', '#3B82F6')
+      const cardWithLabel = { ...CARD_BACKLOG_1, labels: [backend] }
+      mockFetchRouter([
+        ...boardAndProjectHandlers(BOARD, PROJECT, CARDS_PAGE, { card1: cardWithLabel }),
+        {
+          match: (url, method) => method === 'DELETE' && url.includes('/cards/card1/labels/l1'),
+          respond: () => jsonResponse({ title: 'Erro interno', status: 500, detail: 'Falha ao remover label.' }, 500),
+        },
+      ])
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Backend')
+
+      await user.click(within(dialog).getByRole('button', { name: 'Remover label Backend' }))
+
+      expect(await within(dialog).findByText('Falha ao remover label.')).toBeInTheDocument()
+      expect(within(dialog).getByText('Backend')).toBeInTheDocument()
+    })
+
+    it('VIEWER visualiza labels sem poder adicionar ou remover', async () => {
+      const backend = labelOf('l1', 'Backend', '#3B82F6')
+      const cardWithLabel = { ...CARD_BACKLOG_1, labels: [backend] }
+      mockFetchRouter(boardAndProjectHandlers(BOARD, PROJECT, CARDS_PAGE, { card1: cardWithLabel }))
+
+      renderDetailPage('p1', 'VIEWER', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Backend')
+
+      expect(within(dialog).queryByRole('button', { name: 'Adicionar label' })).not.toBeInTheDocument()
+      expect(within(dialog).queryByRole('button', { name: 'Remover label Backend' })).not.toBeInTheDocument()
+    })
+
+    it('DEVELOPER pode associar labels mas não vê a opção de criar nova label no catálogo', async () => {
+      const user = userEvent.setup()
+      const backend = labelOf('l1', 'Backend', '#3B82F6')
+      mockFetchRouter([
+        ...boardAndProjectHandlers(BOARD, PROJECT, CARDS_PAGE, { card1: CARD_BACKLOG_1 }),
+        { match: (url, method) => method === 'GET' && url.includes('/projects/p1/labels'), respond: () => jsonResponse([backend]) },
+      ])
+
+      renderDetailPage('p1', 'DEVELOPER', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Primeiro card do backlog')
+      await user.click(within(dialog).getByRole('button', { name: 'Adicionar label' }))
+
+      await within(dialog).findByRole('button', { name: /Backend/ })
+      expect(within(dialog).queryByRole('button', { name: 'Criar nova label' })).not.toBeInTheDocument()
+    })
+
+    it('projeto arquivado mostra labels do card somente leitura', async () => {
+      const backend = labelOf('l1', 'Backend', '#3B82F6')
+      const cardWithLabel = { ...CARD_BACKLOG_1, labels: [backend] }
+      mockFetchRouter(boardAndProjectHandlers(BOARD, ARCHIVED_PROJECT, CARDS_PAGE, { card1: cardWithLabel }))
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Backend')
+
+      expect(within(dialog).queryByRole('button', { name: 'Adicionar label' })).not.toBeInTheDocument()
+    })
+
+    it('ADMIN gerencia o catálogo: cria, edita e exclui uma label', async () => {
+      const user = userEvent.setup()
+      let labels: Array<{ id: string; name: string; color: string; createdAt: string; updatedAt: string }> = []
+      const created = labelOf('l1', 'Backend', '#6B7280')
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+          const url = input.toString()
+          const method = (init?.method ?? 'GET').toUpperCase()
+          if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
+          if (method === 'GET' && url.includes('/projects/p1/labels')) return Promise.resolve(jsonResponse(labels))
+          if (method === 'POST' && url.includes('/projects/p1/labels')) {
+            labels = [created]
+            return Promise.resolve(jsonResponse(created, 201))
+          }
+          if (method === 'PATCH' && url.includes('/projects/p1/labels/l1')) {
+            labels = [{ ...created, name: 'API' }]
+            return Promise.resolve(jsonResponse({ ...created, name: 'API' }))
+          }
+          if (method === 'DELETE' && url.includes('/projects/p1/labels/l1')) {
+            labels = []
+            return Promise.resolve({ ok: true, status: 204, headers: new Headers(), json: () => Promise.resolve(undefined) } as Response)
+          }
+          return Promise.reject(new Error(`fetch inesperado: ${method} ${url}`))
+        }),
+      )
+
+      renderDetailPage('p1')
+      await screen.findByText('Backlog')
+
+      await user.click(screen.getByRole('button', { name: 'Labels' }))
+      const managementHeading = await screen.findByText('Labels do Projeto')
+      const managementDialog = managementHeading.closest('dialog') as HTMLElement
+      expect(await within(managementDialog).findByText('Nenhuma label cadastrada. Crie labels para organizar os cards.')).toBeInTheDocument()
+
+      await user.type(within(managementDialog).getByLabelText('Nome da nova label'), 'Backend')
+      await user.click(within(managementDialog).getByRole('button', { name: '+ Criar Label' }))
+      expect(await within(managementDialog).findByText('Backend')).toBeInTheDocument()
+
+      await user.click(within(managementDialog).getByRole('button', { name: 'Editar label Backend' }))
+      const nameInput = within(managementDialog).getByLabelText('Nome da label')
+      await user.clear(nameInput)
+      await user.type(nameInput, 'API')
+      await user.click(within(managementDialog).getByRole('button', { name: 'Salvar' }))
+      expect(await within(managementDialog).findByText('API')).toBeInTheDocument()
+
+      await user.click(within(managementDialog).getByRole('button', { name: 'Excluir label API' }))
+      const confirmDialog = (await screen.findByText('Excluir label')).closest('dialog') as HTMLElement
+      await user.click(within(confirmDialog).getByRole('button', { name: 'Excluir' }))
+
+      await waitFor(() =>
+        expect(
+          within(managementDialog).getByText('Nenhuma label cadastrada. Crie labels para organizar os cards.'),
+        ).toBeInTheDocument(),
+      )
     })
   })
 })

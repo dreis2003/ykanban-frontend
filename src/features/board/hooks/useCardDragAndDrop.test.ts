@@ -28,6 +28,7 @@ function cardIn(columnId: string, id: string, position: number): Card {
     column: { id: column.id, type: column.type, name: column.name },
     position,
     acceptanceCriteria: [],
+    labels: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
   }

@@ -42,6 +42,23 @@
   background-color: var(--color-accent-hover);
 }
 
+.labelsButton {
+  appearance: none;
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.labelsButton:hover {
+  border-color: var(--color-accent);
+}
+
 .retryButton {
   appearance: none;
   border: var(--border-width) solid var(--color-border-strong);

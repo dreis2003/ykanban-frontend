@@ -14,6 +14,7 @@ import { CardDetailDialog } from '@/features/card/components/CardDetailDialog/Ca
 import { CardFormDialog } from '@/features/card/components/CardFormDialog/CardFormDialog'
 import { KanbanCard } from '@/features/card/components/KanbanCard/KanbanCard'
 import type { Card } from '@/features/card/types'
+import { LabelManagementDialog } from '@/features/label/components/LabelManagementDialog/LabelManagementDialog'
 import { ApiError } from '@/shared/api/apiError'
 import { StatusMessage } from '@/shared/components/StatusMessage/StatusMessage'
 import type { PageResponse } from '@/shared/types/pageResponse'
@@ -46,6 +47,7 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
   const [cardDialog, setCardDialog] = useState<CardDialogState>(null)
   const [cardFormError, setCardFormError] = useState<string | null>(null)
   const [moveError, setMoveError] = useState<string | null>(null)
+  const [labelDialogOpen, setLabelDialogOpen] = useState(false)
   const canEditColumns = canManage && !isReadOnly
   const canEditCards = canManageCards && !isReadOnly
 
@@ -198,6 +200,11 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
     <div className={styles.wrapper}>
       <div className={styles.toolbar}>
         <span className={styles.toolbarTitle}>Kanban</span>
+        {canEditColumns ? (
+          <button type="button" className={styles.labelsButton} onClick={() => setLabelDialogOpen(true)}>
+            Labels
+          </button>
+        ) : null}
         {canEditCards ? (
           <button type="button" className={styles.newCardButton} onClick={openCreateCardDialog}>
             <Plus size={16} aria-hidden="true" />
@@ -281,6 +288,8 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
         </>
       ) : null}
 
+      <LabelManagementDialog open={labelDialogOpen} projectId={projectId} onClose={() => setLabelDialogOpen(false)} />
+
       <EditColumnDialog
         open={editingColumn !== null}
         column={editingColumn}
@@ -300,6 +309,7 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
         isLoading={isOpenCardLoading}
         isError={isOpenCardError}
         canManage={canEditCards}
+        canManageLabelsCatalog={canEditColumns}
         onEdit={() => {
           if (openCard) {
             setCardFormError(null)

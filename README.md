@@ -1,9 +1,9 @@
 # YKanban — Frontend
 
 Frontend do YKanban: React 19 + TypeScript + Vite, arquitetura orientada a features. Autenticação
-(login/sessão), dashboard de projetos, Board com colunas, Cards com drag-and-drop entre colunas e
-Critérios de Aceite já implementados; ver `agent_docs/` na raiz do repositório para o roadmap
-completo.
+(login/sessão), dashboard de projetos, Board com colunas, Cards com drag-and-drop entre colunas,
+Critérios de Aceite e Labels já implementados; ver `agent_docs/` na raiz do repositório para o
+roadmap completo.
 
 ## Requisitos
 
@@ -109,8 +109,9 @@ src/
     auth/             AuthProvider/useAuth, RequireAuth (guard de rota), authApi
     projects/         tipos, projectsApi, ProjectCard, ProjectFormDialog, ProjectsSummary
     board/            tipos, boardApi, ProjectBoard, BoardColumn, EditColumnDialog, useCardDragAndDrop
-    card/             tipos, cardApi, acceptanceCriteriaApi, labels PT-BR, KanbanCard,
-                      CardFormDialog, CardDetailDialog, AcceptanceCriteriaSection
+    card/             tipos, cardApi, acceptanceCriteriaApi, cardLabelApi, labels PT-BR, KanbanCard,
+                      CardFormDialog, CardDetailDialog, AcceptanceCriteriaSection, CardLabelsSection
+    label/            tipos, labelApi, contrastColor, LabelBadge, LabelColorPicker, LabelManagementDialog
   styles/           design tokens e estilos globais
 ```
 
@@ -156,8 +157,17 @@ Alias de import: `@/*` aponta para `src/*`.
   coluna de origem antes de assentar no destino.
 - Remoção de Critério de Aceite reaproveita o `ConfirmDialog` genérico (mesmo usado para arquivar
   projeto) em vez de um padrão de confirmação novo.
+- `LabelBadge` calcula contraste de texto (claro/escuro) via luminância relativa (fórmula WCAG) a
+  partir da cor hex, no cliente — nunca persistido no backend.
+- Seletor de Label no Card é um popover simples (`position: absolute`), não um novo `<dialog>` —
+  fica sempre próximo do botão que o abriu, sem competir com o drawer do Card já aberto.
+- Editar nome/cor de uma Label no catálogo invalida três queries do React Query, não só a do
+  catálogo: `['labels', projectId]`, `['cards', projectId]` e o prefixo `['card']` (qualquer
+  `['card', cardId]` de um drawer aberto) — `CardResponse` embute um snapshot `{id,name,color}` da
+  Label em cada Card, então a edição precisa propagar para todo lugar que já tenha esse snapshot em
+  cache.
 
 ## Pendências / próxima etapa
 
-- Labels dos Cards (Prompt 11).
+- Responsável (Assignee) dos Cards (Prompt 12).
 - Autorização por role em nível de projeto (hoje é global — infraestrutura pronta via `AuthUser.role`).

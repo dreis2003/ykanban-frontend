@@ -129,7 +129,7 @@ const CARD_DOING = cardOf(
   'card3', 'YK-3', 3, 'Card em desenvolvimento', null, 'TECH', 'MEDIUM', 'c3', 'DOING', 'Em Desenvolvimento', 1,
 )
 
-const CARDS_PAGE = pageOf([CARD_BACKLOG_2, CARD_BACKLOG_1, CARD_DOING])
+const CARDS = [CARD_BACKLOG_2, CARD_BACKLOG_1, CARD_DOING]
 const CARDS_BY_ID: Record<string, unknown> = { card1: CARD_BACKLOG_1, card2: CARD_BACKLOG_2, card3: CARD_DOING }
 
 function authValue(role: 'ADMIN' | 'DEVELOPER' | 'VIEWER'): AuthContextValue {
@@ -165,7 +165,7 @@ function renderDetailPage(
 function boardAndProjectHandlers(
   board: unknown = BOARD,
   project: unknown = PROJECT,
-  cards: unknown = CARDS_PAGE,
+  cards: unknown = CARDS,
   cardsById: Record<string, unknown> = CARDS_BY_ID,
 ): FetchHandler[] {
   return [
@@ -219,7 +219,7 @@ describe('ProjectDetailPage', () => {
         const url = input.toString()
         const method = (init?.method ?? 'GET').toUpperCase()
         if (method === 'GET' && url.includes('/projects/p1/board')) return pendingBoard
-        if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+        if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS))
         if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
         return Promise.reject(new Error(`fetch inesperado: ${method} ${url}`))
       }),
@@ -264,7 +264,7 @@ describe('ProjectDetailPage', () => {
             ? Promise.resolve(jsonResponse({ title: 'Erro interno', status: 500 }, 500))
             : Promise.resolve(jsonResponse(BOARD))
         }
-        if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+        if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS))
         if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
         return Promise.reject(new Error(`fetch inesperado: ${method} ${url}`))
       }),
@@ -309,7 +309,7 @@ describe('ProjectDetailPage', () => {
           return Promise.resolve(jsonResponse(updated ? { ...BOARD, columns: [{ ...BOARD.columns[0], name: 'Fila', wipLimit: 5 }, ...BOARD.columns.slice(1)] } : BOARD))
         }
         if (method === 'GET' && url.includes('/projects/p1/cards')) {
-          return Promise.resolve(jsonResponse(CARDS_PAGE))
+          return Promise.resolve(jsonResponse(CARDS))
         }
         if (method === 'GET' && url.endsWith('/projects/p1')) {
           return Promise.resolve(jsonResponse(PROJECT))
@@ -386,7 +386,7 @@ describe('ProjectDetailPage', () => {
         const method = (init?.method ?? 'GET').toUpperCase()
         if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
         if (method === 'GET' && url.includes('/projects/p1/cards')) {
-          return Promise.resolve(jsonResponse(created ? pageOf([...CARDS_PAGE.content, NEW_CARD]) : CARDS_PAGE))
+          return Promise.resolve(jsonResponse(created ? [...CARDS, NEW_CARD] : CARDS))
         }
         if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
         if (method === 'POST' && url.includes('/projects/p1/cards')) {
@@ -431,7 +431,7 @@ describe('ProjectDetailPage', () => {
         if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
         if (method === 'GET' && url.includes('/projects/p1/cards')) {
           return Promise.resolve(
-            jsonResponse(updated ? pageOf([CARD_BACKLOG_2, UPDATED_CARD, CARD_DOING]) : CARDS_PAGE),
+            jsonResponse(updated ? [CARD_BACKLOG_2, UPDATED_CARD, CARD_DOING] : CARDS),
           )
         }
         if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
@@ -550,7 +550,7 @@ describe('ProjectDetailPage', () => {
           const url = input.toString()
           const method = (init?.method ?? 'GET').toUpperCase()
           if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
-          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS))
           if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
           if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(card))
           if (method === 'POST' && url.includes('/cards/card1/acceptance-criteria')) {
@@ -589,7 +589,7 @@ describe('ProjectDetailPage', () => {
           const method = (init?.method ?? 'GET').toUpperCase()
           if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
           if (method === 'GET' && url.includes('/projects/p1/cards')) {
-            return Promise.resolve(jsonResponse(pageOf([CARD_BACKLOG_2, cardWithCriteria, CARD_DOING])))
+            return Promise.resolve(jsonResponse([CARD_BACKLOG_2, cardWithCriteria, CARD_DOING]))
           }
           if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
           if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(cardWithCriteria))
@@ -615,7 +615,7 @@ describe('ProjectDetailPage', () => {
       const criteria = [acceptanceCriterionOf('ac1', 'Critério que vai falhar', false, 1)]
       const cardWithCriteria = { ...CARD_BACKLOG_1, acceptanceCriteria: criteria }
       mockFetchRouter([
-        ...boardAndProjectHandlers(BOARD, PROJECT, CARDS_PAGE, { card1: cardWithCriteria }),
+        ...boardAndProjectHandlers(BOARD, PROJECT, CARDS, { card1: cardWithCriteria }),
         {
           match: (url, method) => method === 'POST' && url.includes('/acceptance-criteria/ac1/complete'),
           respond: () => jsonResponse({ title: 'Erro interno', status: 500, detail: 'Falha ao concluir.' }, 500),
@@ -642,7 +642,7 @@ describe('ProjectDetailPage', () => {
           const url = input.toString()
           const method = (init?.method ?? 'GET').toUpperCase()
           if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
-          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS))
           if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
           if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(cardWithCriteria))
           if (method === 'PATCH' && url.includes('/acceptance-criteria/ac1')) {
@@ -677,7 +677,7 @@ describe('ProjectDetailPage', () => {
           const url = input.toString()
           const method = (init?.method ?? 'GET').toUpperCase()
           if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
-          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS))
           if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
           if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(cardWithCriteria))
           if (method === 'DELETE' && url.includes('/acceptance-criteria/ac2')) {
@@ -705,7 +705,7 @@ describe('ProjectDetailPage', () => {
     it('VIEWER só visualiza os critérios, sem formulário de criação, checkbox habilitado ou remoção', async () => {
       const criteria = [acceptanceCriterionOf('ac1', 'Critério somente leitura', false, 1)]
       const cardWithCriteria = { ...CARD_BACKLOG_1, acceptanceCriteria: criteria }
-      mockFetchRouter(boardAndProjectHandlers(BOARD, PROJECT, CARDS_PAGE, { card1: cardWithCriteria }))
+      mockFetchRouter(boardAndProjectHandlers(BOARD, PROJECT, CARDS, { card1: cardWithCriteria }))
 
       renderDetailPage('p1', 'VIEWER', '/projects/p1/cards/card1')
       const dialog = await screen.findByRole('dialog')
@@ -719,7 +719,7 @@ describe('ProjectDetailPage', () => {
     it('projeto arquivado deixa os critérios somente leitura mesmo para ADMIN', async () => {
       const criteria = [acceptanceCriterionOf('ac1', 'Critério de projeto arquivado', false, 1)]
       const cardWithCriteria = { ...CARD_BACKLOG_1, acceptanceCriteria: criteria }
-      mockFetchRouter(boardAndProjectHandlers(BOARD, ARCHIVED_PROJECT, CARDS_PAGE, { card1: cardWithCriteria }))
+      mockFetchRouter(boardAndProjectHandlers(BOARD, ARCHIVED_PROJECT, CARDS, { card1: cardWithCriteria }))
 
       renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
       const dialog = await screen.findByRole('dialog')
@@ -737,7 +737,7 @@ describe('ProjectDetailPage', () => {
       ]
       const cardWithCriteria = { ...CARD_BACKLOG_1, acceptanceCriteria: criteria }
       mockFetchRouter(
-        boardAndProjectHandlers(BOARD, PROJECT, pageOf([CARD_BACKLOG_2, cardWithCriteria, CARD_DOING]), {
+        boardAndProjectHandlers(BOARD, PROJECT, [CARD_BACKLOG_2, cardWithCriteria, CARD_DOING], {
           card1: cardWithCriteria,
         }),
       )
@@ -763,7 +763,7 @@ describe('ProjectDetailPage', () => {
       ]
       const cardWithLabels = { ...CARD_BACKLOG_1, labels }
       mockFetchRouter(
-        boardAndProjectHandlers(BOARD, PROJECT, pageOf([CARD_BACKLOG_2, cardWithLabels, CARD_DOING]), {
+        boardAndProjectHandlers(BOARD, PROJECT, [CARD_BACKLOG_2, cardWithLabels, CARD_DOING], {
           card1: cardWithLabels,
         }),
       )
@@ -788,7 +788,7 @@ describe('ProjectDetailPage', () => {
           const url = input.toString()
           const method = (init?.method ?? 'GET').toUpperCase()
           if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
-          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS))
           if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
           if (method === 'GET' && url.includes('/projects/p1/labels')) return Promise.resolve(jsonResponse([backend]))
           if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(card))
@@ -814,7 +814,7 @@ describe('ProjectDetailPage', () => {
       const backend = labelOf('l1', 'Backend', '#3B82F6')
       const cardWithLabel = { ...CARD_BACKLOG_1, labels: [backend] }
       mockFetchRouter([
-        ...boardAndProjectHandlers(BOARD, PROJECT, CARDS_PAGE, { card1: cardWithLabel }),
+        ...boardAndProjectHandlers(BOARD, PROJECT, CARDS, { card1: cardWithLabel }),
         {
           match: (url, method) => method === 'DELETE' && url.includes('/cards/card1/labels/l1'),
           respond: () => jsonResponse({ title: 'Erro interno', status: 500, detail: 'Falha ao remover label.' }, 500),
@@ -834,7 +834,7 @@ describe('ProjectDetailPage', () => {
     it('VIEWER visualiza labels sem poder adicionar ou remover', async () => {
       const backend = labelOf('l1', 'Backend', '#3B82F6')
       const cardWithLabel = { ...CARD_BACKLOG_1, labels: [backend] }
-      mockFetchRouter(boardAndProjectHandlers(BOARD, PROJECT, CARDS_PAGE, { card1: cardWithLabel }))
+      mockFetchRouter(boardAndProjectHandlers(BOARD, PROJECT, CARDS, { card1: cardWithLabel }))
 
       renderDetailPage('p1', 'VIEWER', '/projects/p1/cards/card1')
       const dialog = await screen.findByRole('dialog')
@@ -848,7 +848,7 @@ describe('ProjectDetailPage', () => {
       const user = userEvent.setup()
       const backend = labelOf('l1', 'Backend', '#3B82F6')
       mockFetchRouter([
-        ...boardAndProjectHandlers(BOARD, PROJECT, CARDS_PAGE, { card1: CARD_BACKLOG_1 }),
+        ...boardAndProjectHandlers(BOARD, PROJECT, CARDS, { card1: CARD_BACKLOG_1 }),
         { match: (url, method) => method === 'GET' && url.includes('/projects/p1/labels'), respond: () => jsonResponse([backend]) },
       ])
 
@@ -864,7 +864,7 @@ describe('ProjectDetailPage', () => {
     it('projeto arquivado mostra labels do card somente leitura', async () => {
       const backend = labelOf('l1', 'Backend', '#3B82F6')
       const cardWithLabel = { ...CARD_BACKLOG_1, labels: [backend] }
-      mockFetchRouter(boardAndProjectHandlers(BOARD, ARCHIVED_PROJECT, CARDS_PAGE, { card1: cardWithLabel }))
+      mockFetchRouter(boardAndProjectHandlers(BOARD, ARCHIVED_PROJECT, CARDS, { card1: cardWithLabel }))
 
       renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
       const dialog = await screen.findByRole('dialog')
@@ -883,7 +883,7 @@ describe('ProjectDetailPage', () => {
           const url = input.toString()
           const method = (init?.method ?? 'GET').toUpperCase()
           if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
-          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS))
           if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
           if (method === 'GET' && url.includes('/projects/p1/labels')) return Promise.resolve(jsonResponse(labels))
           if (method === 'POST' && url.includes('/projects/p1/labels')) {
@@ -946,7 +946,7 @@ describe('ProjectDetailPage', () => {
       const daniel = userOf('u2', 'Daniel Reis', 'daniel@ykanban.dev')
       const cardWithAssignee = { ...CARD_BACKLOG_1, assignee: daniel }
       mockFetchRouter(
-        boardAndProjectHandlers(BOARD, PROJECT, pageOf([CARD_BACKLOG_2, cardWithAssignee, CARD_DOING]), {
+        boardAndProjectHandlers(BOARD, PROJECT, [CARD_BACKLOG_2, cardWithAssignee, CARD_DOING], {
           card1: cardWithAssignee,
         }),
       )
@@ -969,7 +969,7 @@ describe('ProjectDetailPage', () => {
           const url = input.toString()
           const method = (init?.method ?? 'GET').toUpperCase()
           if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
-          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS))
           if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
           if (method === 'GET' && url.includes('/users')) return Promise.resolve(jsonResponse(usersPage([daniel])))
           if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(card))
@@ -995,7 +995,7 @@ describe('ProjectDetailPage', () => {
       const daniel = userOf('u2', 'Daniel Reis', 'daniel@ykanban.dev')
       const cardWithAssignee = { ...CARD_BACKLOG_1, assignee: daniel }
       mockFetchRouter([
-        ...boardAndProjectHandlers(BOARD, PROJECT, CARDS_PAGE, { card1: cardWithAssignee }),
+        ...boardAndProjectHandlers(BOARD, PROJECT, CARDS, { card1: cardWithAssignee }),
         {
           match: (url, method) => method === 'DELETE' && url.includes('/cards/card1/assignee'),
           respond: () => jsonResponse({ title: 'Erro interno', status: 500, detail: 'Falha ao remover responsável.' }, 500),
@@ -1021,7 +1021,7 @@ describe('ProjectDetailPage', () => {
           const url = input.toString()
           const method = (init?.method ?? 'GET').toUpperCase()
           if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
-          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS))
           if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
           if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(card))
           if (method === 'POST' && url.includes('/cards/card1/assignee')) {
@@ -1043,7 +1043,7 @@ describe('ProjectDetailPage', () => {
     it('VIEWER visualiza o responsável sem poder gerenciar', async () => {
       const daniel = userOf('u2', 'Daniel Reis', 'daniel@ykanban.dev')
       const cardWithAssignee = { ...CARD_BACKLOG_1, assignee: daniel }
-      mockFetchRouter(boardAndProjectHandlers(BOARD, PROJECT, CARDS_PAGE, { card1: cardWithAssignee }))
+      mockFetchRouter(boardAndProjectHandlers(BOARD, PROJECT, CARDS, { card1: cardWithAssignee }))
 
       renderDetailPage('p1', 'VIEWER', '/projects/p1/cards/card1')
       const dialog = await screen.findByRole('dialog')
@@ -1056,7 +1056,7 @@ describe('ProjectDetailPage', () => {
     it('projeto arquivado mostra o responsável somente leitura', async () => {
       const daniel = userOf('u2', 'Daniel Reis', 'daniel@ykanban.dev')
       const cardWithAssignee = { ...CARD_BACKLOG_1, assignee: daniel }
-      mockFetchRouter(boardAndProjectHandlers(BOARD, ARCHIVED_PROJECT, CARDS_PAGE, { card1: cardWithAssignee }))
+      mockFetchRouter(boardAndProjectHandlers(BOARD, ARCHIVED_PROJECT, CARDS, { card1: cardWithAssignee }))
 
       renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
       const dialog = await screen.findByRole('dialog')
@@ -1068,7 +1068,7 @@ describe('ProjectDetailPage', () => {
     it('responsável atual inativo continua visível com indicação discreta', async () => {
       const inactiveUser = userOf('u2', 'Daniel Reis', 'daniel@ykanban.dev', 'INACTIVE')
       const cardWithAssignee = { ...CARD_BACKLOG_1, assignee: inactiveUser }
-      mockFetchRouter(boardAndProjectHandlers(BOARD, PROJECT, CARDS_PAGE, { card1: cardWithAssignee }))
+      mockFetchRouter(boardAndProjectHandlers(BOARD, PROJECT, CARDS, { card1: cardWithAssignee }))
 
       renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
       const dialog = await screen.findByRole('dialog')
@@ -1097,7 +1097,7 @@ describe('ProjectDetailPage', () => {
     it('mostra o indicador no KanbanCard e o motivo/responsável/data no detalhe quando bloqueado', async () => {
       const blockedCard = { ...CARD_BACKLOG_1, blocked: true, block: blockOf('Aguardando API externa.', 'Daniel Reis') }
       mockFetchRouter(
-        boardAndProjectHandlers(BOARD, PROJECT, pageOf([CARD_BACKLOG_2, blockedCard, CARD_DOING]), {
+        boardAndProjectHandlers(BOARD, PROJECT, [CARD_BACKLOG_2, blockedCard, CARD_DOING], {
           card1: blockedCard,
         }),
       )
@@ -1123,7 +1123,7 @@ describe('ProjectDetailPage', () => {
           const url = input.toString()
           const method = (init?.method ?? 'GET').toUpperCase()
           if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
-          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS))
           if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
           if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(card))
           if (method === 'POST' && url.includes('/cards/card1/block')) {
@@ -1191,7 +1191,7 @@ describe('ProjectDetailPage', () => {
           const url = input.toString()
           const method = (init?.method ?? 'GET').toUpperCase()
           if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
-          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS))
           if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
           if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(card))
           if (method === 'POST' && url.includes('/cards/card1/unblock')) {
@@ -1214,7 +1214,7 @@ describe('ProjectDetailPage', () => {
 
     it('VIEWER visualiza o bloqueio sem poder gerenciar', async () => {
       const blockedCard = { ...CARD_BACKLOG_1, blocked: true, block: blockOf('Motivo válido para o teste.', 'Daniel Reis') }
-      mockFetchRouter(boardAndProjectHandlers(BOARD, PROJECT, CARDS_PAGE, { card1: blockedCard }))
+      mockFetchRouter(boardAndProjectHandlers(BOARD, PROJECT, CARDS, { card1: blockedCard }))
 
       renderDetailPage('p1', 'VIEWER', '/projects/p1/cards/card1')
       const dialog = await screen.findByRole('dialog')
@@ -1225,7 +1225,7 @@ describe('ProjectDetailPage', () => {
 
     it('projeto arquivado mostra o bloqueio somente leitura', async () => {
       const blockedCard = { ...CARD_BACKLOG_1, blocked: true, block: blockOf('Motivo válido para o teste.', 'Daniel Reis') }
-      mockFetchRouter(boardAndProjectHandlers(BOARD, ARCHIVED_PROJECT, CARDS_PAGE, { card1: blockedCard }))
+      mockFetchRouter(boardAndProjectHandlers(BOARD, ARCHIVED_PROJECT, CARDS, { card1: blockedCard }))
 
       renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
       const dialog = await screen.findByRole('dialog')
@@ -1326,7 +1326,7 @@ describe('ProjectDetailPage', () => {
           const url = input.toString()
           const method = (init?.method ?? 'GET').toUpperCase()
           if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
-          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS))
           if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
           if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(CARD_BACKLOG_1))
           if (method === 'GET' && isCommentsListRequest(url)) return Promise.resolve(jsonResponse(commentsPageOf(comments)))
@@ -1470,7 +1470,7 @@ describe('ProjectDetailPage', () => {
           const url = input.toString()
           const method = (init?.method ?? 'GET').toUpperCase()
           if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
-          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS))
           if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
           if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(CARD_BACKLOG_1))
           if (method === 'GET' && isCommentsListRequest(url)) {
@@ -1665,6 +1665,89 @@ describe('ProjectDetailPage', () => {
       await user.click(within(dialog).getByRole('button', { name: 'Carregar mais atividades' }))
 
       expect(await within(dialog).findByText('Ana criou o card YK-1.')).toBeInTheDocument()
+    })
+  })
+
+  describe('Filtros e pesquisa do Kanban', () => {
+    function handlersWithFilterableCards(filteredResult: unknown[]): FetchHandler[] {
+      return [
+        { match: (url, method) => method === 'GET' && url.includes('/projects/p1/board'), respond: () => jsonResponse(BOARD) },
+        { match: (url, method) => method === 'GET' && url.endsWith('/projects/p1'), respond: () => jsonResponse(PROJECT) },
+        { match: (url, method) => method === 'GET' && url.includes('/projects/p1/labels'), respond: () => jsonResponse([]) },
+        { match: (url, method) => method === 'GET' && url.includes('/users'), respond: () => jsonResponse(pageOf([])) },
+        {
+          match: (url, method) => method === 'GET' && url.includes('/projects/p1/cards'),
+          respond: (url) => {
+            const hasFilter = new URL(url).search.length > 0
+            return jsonResponse(hasFilter ? filteredResult : CARDS)
+          },
+        },
+      ]
+    }
+
+    function filtersRegion() {
+      return screen.getByRole('search', { name: 'Filtros do Kanban' })
+    }
+
+    it('busca por texto filtra os cards exibidos após o debounce', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter(handlersWithFilterableCards([CARD_BACKLOG_2]))
+
+      renderDetailPage('p1')
+      await screen.findByText('Backlog')
+      expect(screen.getByText('Primeiro card do backlog')).toBeInTheDocument()
+
+      await user.type(within(filtersRegion()).getByLabelText('Buscar cards'), 'segundo')
+
+      expect(await screen.findByText('Segundo card do backlog')).toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByText('Primeiro card do backlog')).not.toBeInTheDocument())
+    })
+
+    it('filtro de tipo mostra só os cards do tipo selecionado, exibe chip e desabilita o drag-and-drop', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter(handlersWithFilterableCards([CARD_DOING]))
+
+      renderDetailPage('p1')
+      await screen.findByText('Backlog')
+
+      await user.click(within(filtersRegion()).getByText('Tipo'))
+      await user.click(within(filtersRegion()).getByRole('checkbox', { name: 'Bug' }))
+
+      expect(await screen.findByText('Card em desenvolvimento')).toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByText('Primeiro card do backlog')).not.toBeInTheDocument())
+      expect(within(within(filtersRegion()).getByRole('list', { name: 'Filtros ativos' })).getByText('Bug')).toBeInTheDocument()
+
+      const cardButton = screen.getByRole('button', { name: /Card em desenvolvimento/ })
+      expect(cardButton).not.toHaveAttribute('aria-roledescription')
+    })
+
+    it('"Limpar filtros" remove todos os filtros ativos e volta a mostrar todos os cards', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter(handlersWithFilterableCards([CARD_DOING]))
+
+      renderDetailPage('p1')
+      await screen.findByText('Backlog')
+
+      await user.click(within(filtersRegion()).getByText('Tipo'))
+      await user.click(within(filtersRegion()).getByRole('checkbox', { name: 'Bug' }))
+      await screen.findByText('Card em desenvolvimento')
+
+      await user.click(within(filtersRegion()).getByRole('button', { name: 'Limpar filtros' }))
+
+      expect(await screen.findByText('Primeiro card do backlog')).toBeInTheDocument()
+      expect(within(filtersRegion()).queryByRole('button', { name: 'Limpar filtros' })).not.toBeInTheDocument()
+    })
+
+    it('restaura filtros a partir da URL e ignora valores desconhecidos', async () => {
+      mockFetchRouter(handlersWithFilterableCards([CARD_DOING]))
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1?types=BUG,NAOEXISTE&blocked=true')
+      await screen.findByText('Backlog')
+
+      expect(await screen.findByText('Card em desenvolvimento')).toBeInTheDocument()
+      await userEvent.setup().click(within(filtersRegion()).getByText('Tipo (1)'))
+      expect(within(filtersRegion()).getByRole('checkbox', { name: 'Bug' })).toBeChecked()
+      expect(within(filtersRegion()).getByRole('button', { name: 'Limpar filtros' })).toBeInTheDocument()
     })
   })
 })

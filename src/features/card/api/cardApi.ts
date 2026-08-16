@@ -1,28 +1,39 @@
 import { httpClient } from '@/shared/api/httpClient'
-import type { PageResponse } from '@/shared/types/pageResponse'
-import type { Card, CreateCardRequest, ListCardsParams, MoveCardRequest, UpdateCardRequest } from '@/features/card/types'
+import type { Card, CardSearchCriteria, CreateCardRequest, MoveCardRequest, UpdateCardRequest } from '@/features/card/types'
 
-const DEFAULT_PAGE_SIZE = 200
-
-function buildListQuery(params: ListCardsParams): string {
+function buildListQuery(criteria: CardSearchCriteria): string {
   const query = new URLSearchParams()
-  query.set('page', String(params.page ?? 0))
-  query.set('size', String(params.size ?? DEFAULT_PAGE_SIZE))
-  if (params.type) {
-    query.set('type', params.type)
+  if (criteria.search) {
+    query.set('search', criteria.search)
   }
-  if (params.priority) {
-    query.set('priority', params.priority)
+  if (criteria.types?.length) {
+    query.set('types', criteria.types.join(','))
   }
-  if (params.columnId) {
-    query.set('columnId', params.columnId)
+  if (criteria.priorities?.length) {
+    query.set('priorities', criteria.priorities.join(','))
+  }
+  if (criteria.columnId) {
+    query.set('columnId', criteria.columnId)
+  }
+  if (criteria.labelIds?.length) {
+    query.set('labelIds', criteria.labelIds.join(','))
+  }
+  if (criteria.unassigned) {
+    query.set('unassigned', 'true')
+  } else if (criteria.assigneeId) {
+    query.set('assigneeId', criteria.assigneeId)
+  }
+  if (criteria.blocked !== undefined) {
+    query.set('blocked', String(criteria.blocked))
   }
   return query.toString()
 }
 
 export const cardApi = {
-  list: (projectId: string, params: ListCardsParams = {}) =>
-    httpClient.get<PageResponse<Card>>(`/projects/${projectId}/cards?${buildListQuery(params)}`),
+  list: (projectId: string, criteria: CardSearchCriteria = {}) => {
+    const queryString = buildListQuery(criteria)
+    return httpClient.get<Card[]>(`/projects/${projectId}/cards${queryString ? `?${queryString}` : ''}`)
+  },
   get: (cardId: string) => httpClient.get<Card>(`/cards/${cardId}`),
   getByKey: (key: string) => httpClient.get<Card>(`/cards/key/${key}`),
   create: (projectId: string, payload: CreateCardRequest) =>

@@ -21,6 +21,7 @@ interface Props {
    * autoridade (rejeita com 409 e o board reverte), isto é só um aviso durante o arrasto, mesmo
    * padrão já usado para `wipBlocked`. */
   cardBlockedFromAdvancing: boolean
+  emptyStateMessage: string
 }
 
 export function BoardColumn({
@@ -34,6 +35,7 @@ export function BoardColumn({
   dragDisabled,
   wipBlocked,
   cardBlockedFromAdvancing,
+  emptyStateMessage,
 }: Props) {
   // position ASC é a ordem de exibição — nunca confiar na ordem de retorno da API por si só.
   const orderedCards = [...cards].sort((a, b) => a.position - b.position)
@@ -80,7 +82,7 @@ export function BoardColumn({
           </p>
         ) : null}
         {orderedCards.length === 0 ? (
-          <p className={styles.emptyState}>Nenhum card</p>
+          <p className={styles.emptyState}>{emptyStateMessage}</p>
         ) : (
           <SortableContext items={orderedCards.map((card) => card.id)} strategy={verticalListSortingStrategy}>
             <ul className={styles.cardList} aria-label={`Cards de ${column.name}`}>

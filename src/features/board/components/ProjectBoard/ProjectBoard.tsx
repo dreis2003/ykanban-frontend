@@ -7,6 +7,8 @@ import { ROUTES } from '@/app/router/routes'
 import { boardApi } from '@/features/board/api/boardApi'
 import { BoardColumn } from '@/features/board/components/BoardColumn/BoardColumn'
 import { EditColumnDialog } from '@/features/board/components/EditColumnDialog/EditColumnDialog'
+import { KanbanFilters } from '@/features/board/components/KanbanFilters/KanbanFilters'
+import { useBoardFilters } from '@/features/board/hooks/useBoardFilters'
 import { useCardDragAndDrop, type MoveResult } from '@/features/board/hooks/useCardDragAndDrop'
 import type { KanbanColumn } from '@/features/board/types'
 import { cardApi } from '@/features/card/api/cardApi'
@@ -17,7 +19,6 @@ import type { Card } from '@/features/card/types'
 import { LabelManagementDialog } from '@/features/label/components/LabelManagementDialog/LabelManagementDialog'
 import { ApiError } from '@/shared/api/apiError'
 import { StatusMessage } from '@/shared/components/StatusMessage/StatusMessage'
-import type { PageResponse } from '@/shared/types/pageResponse'
 import styles from './ProjectBoard.module.css'
 
 interface Props {
@@ -50,6 +51,7 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
   const [labelDialogOpen, setLabelDialogOpen] = useState(false)
   const canEditColumns = canManage && !isReadOnly
   const canEditCards = canManageCards && !isReadOnly
+  const { criteria, hasActiveFilters } = useBoardFilters()
 
   const {
     data: board,
@@ -61,13 +63,15 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
     queryFn: () => boardApi.get(projectId),
   })
 
+  const cardsQueryKey = ['cards', projectId, criteria] as const
+
   const {
-    data: cardsPage,
+    data: cards,
     isError: isCardsError,
     refetch: refetchCards,
   } = useQuery({
-    queryKey: ['cards', projectId],
-    queryFn: () => cardApi.list(projectId),
+    queryKey: cardsQueryKey,
+    queryFn: () => cardApi.list(projectId, criteria),
   })
 
   const {
@@ -82,13 +86,13 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
 
   const cardsByColumnId = useMemo(() => {
     const map = new Map<string, Card[]>()
-    for (const card of cardsPage?.content ?? []) {
+    for (const card of cards ?? []) {
       const existing = map.get(card.column.id) ?? []
       existing.push(card)
       map.set(card.column.id, existing)
     }
     return map
-  }, [cardsPage])
+  }, [cards])
 
   const updateColumnMutation = useMutation({
     mutationFn: ({ columnId, name, wipLimit }: { columnId: string; name: string; wipLimit: number | null }) =>
@@ -102,6 +106,7 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
   })
 
   function invalidateCards() {
+    // Prefixo (sem `criteria`) invalida todas as variações de filtro em cache, não só a atual.
     return queryClient.invalidateQueries({ queryKey: ['cards', projectId] })
   }
 
@@ -139,17 +144,15 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
       // sensação de arrasto malfeito. Cancelar queries em voo continua necessário (evita que um
       // GET /cards já em andamento sobrescreva o valor otimista com dado desatualizado), só não
       // pode bloquear a escrita síncrona.
-      const previous = queryClient.getQueryData<PageResponse<Card>>(['cards', projectId])
-      if (previous) {
-        queryClient.setQueryData(['cards', projectId], { ...previous, content: result.optimisticCards })
-      }
-      queryClient.cancelQueries({ queryKey: ['cards', projectId] })
+      const previous = queryClient.getQueryData<Card[]>(cardsQueryKey)
+      queryClient.setQueryData(cardsQueryKey, result.optimisticCards)
+      queryClient.cancelQueries({ queryKey: cardsQueryKey })
       setMoveError(null)
       return { previous }
     },
     onError: (error: unknown, _result, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(['cards', projectId], context.previous)
+        queryClient.setQueryData(cardsQueryKey, context.previous)
       }
       setMoveError(errorMessageFrom(error))
     },
@@ -158,7 +161,10 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
     },
   })
 
-  const dragDisabled = !canEditCards
+  // Qualquer filtro/pesquisa ativo desabilita o drag-and-drop (ver ADR 0016) — a lista exibida por
+  // coluna deixa de refletir a posição/vizinhança real dos Cards quando filtrada, então reordenar
+  // visualmente não corresponderia a um `targetPosition` correto no board completo.
+  const dragDisabled = !canEditCards || hasActiveFilters
   const dnd = useCardDragAndDrop({
     board,
     cardsByColumnId,
@@ -231,6 +237,8 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
         ) : null}
       </div>
 
+      <KanbanFilters projectId={projectId} />
+
       {isBoardLoading ? (
         <div className={styles.board} aria-hidden="true">
           {SKELETON_COLUMNS.map((index) => (
@@ -298,6 +306,7 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
                     dragDisabled={dragDisabled}
                     wipBlocked={wipBlockedColumnId === column.id}
                     cardBlockedFromAdvancing={blockedMoveColumnId === column.id}
+                    emptyStateMessage={hasActiveFilters ? 'Nenhum card encontrado com os filtros atuais' : 'Nenhum card'}
                   />
                 </div>
               ))}

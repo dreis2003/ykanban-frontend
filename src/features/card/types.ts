@@ -153,10 +153,16 @@ export interface MoveCardRequest {
   targetPosition: number
 }
 
-export interface ListCardsParams {
-  type?: CardType
-  priority?: CardPriority
+/** Sem paginação de propósito — ver ADR 0016 (backend também não pagina este endpoint).
+ * `types`/`priorities`/`labelIds` combinam com OR entre si; categorias diferentes combinam com
+ * AND. `assigneeId` e `unassigned` são mutuamente exclusivos (backend rejeita os dois juntos). */
+export interface CardSearchCriteria {
+  search?: string
+  types?: CardType[]
+  priorities?: CardPriority[]
   columnId?: string
-  page?: number
-  size?: number
+  labelIds?: string[]
+  assigneeId?: string
+  unassigned?: boolean
+  blocked?: boolean
 }

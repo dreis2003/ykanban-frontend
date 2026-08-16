@@ -116,6 +116,14 @@
   background-color: var(--color-danger-bg);
 }
 
+.dropWarning {
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-danger);
+  text-align: center;
+}
+
 .cardList {
   display: flex;
   flex-direction: column;

@@ -181,6 +181,24 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
     return currentCount >= targetColumn.wipLimit ? dnd.overColumnId : null
   }, [dnd.overColumnId, dnd.activeCard, board, cardsByColumnId])
 
+  // Aviso durante o arrasto quando um Card bloqueado é solto numa coluna posterior no fluxo — só
+  // um aviso (mesmo padrão do WIP acima): o backend continua sendo a autoridade, rejeitando com
+  // 409 e revertendo o optimistic update se o usuário soltar mesmo assim (ver ADR 0013).
+  const blockedMoveColumnId = useMemo(() => {
+    if (!dnd.overColumnId || !dnd.activeCard || !board || !dnd.activeCard.blocked) {
+      return null
+    }
+    if (dnd.activeCard.column.id === dnd.overColumnId) {
+      return null
+    }
+    const sourceColumn = board.columns.find((column) => column.id === dnd.activeCard?.column.id)
+    const targetColumn = board.columns.find((column) => column.id === dnd.overColumnId)
+    if (!sourceColumn || !targetColumn) {
+      return null
+    }
+    return targetColumn.position > sourceColumn.position ? dnd.overColumnId : null
+  }, [dnd.overColumnId, dnd.activeCard, board])
+
   function closeColumnEditDialog() {
     setEditingColumn(null)
     setColumnFormError(null)
@@ -279,6 +297,7 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
                     onCardClick={(card) => navigate(ROUTES.cardDetail(projectId, card.id))}
                     dragDisabled={dragDisabled}
                     wipBlocked={wipBlockedColumnId === column.id}
+                    cardBlockedFromAdvancing={blockedMoveColumnId === column.id}
                   />
                 </div>
               ))}
@@ -310,6 +329,9 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
         isError={isOpenCardError}
         canManage={canEditCards}
         canManageLabelsCatalog={canEditColumns}
+        canManageAssignee={canEditCards}
+        canManageBlock={canEditCards}
+        canManageComments={canEditCards}
         onEdit={() => {
           if (openCard) {
             setCardFormError(null)

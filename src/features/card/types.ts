@@ -23,6 +23,85 @@ export interface CardLabelSummary {
   color: string
 }
 
+export interface CardAssigneeSummary {
+  id: string
+  name: string
+  email: string
+  status: 'ACTIVE' | 'INACTIVE'
+}
+
+export interface CardBlockedBySummary {
+  id: string
+  name: string
+}
+
+export interface CardBlockInfo {
+  reason: string
+  blockedAt: string
+  blockedBy: CardBlockedBySummary
+}
+
+export interface CommentAuthor {
+  id: string
+  name: string
+}
+
+/** Não faz parte de `Card` — comentários têm endpoint/paginação própria (ver commentApi),
+ * nunca embutidos em `CardResponse` (evitaria inflar a listagem paginada do board). `content` é
+ * `null` quando `deleted=true`. */
+export interface Comment {
+  id: string
+  content: string | null
+  author: CommentAuthor
+  createdAt: string
+  updatedAt: string
+  deleted: boolean
+}
+
+/** Eventos ainda não conhecidos pelo frontend caem aqui (ver historyFormatter) — nunca falha ao
+ * renderizar por causa de um eventType novo que o backend passe a emitir no futuro. */
+export type CardHistoryEventType =
+  | 'CARD_CREATED'
+  | 'CARD_UPDATED'
+  | 'CARD_MOVED'
+  | 'CARD_BLOCKED'
+  | 'CARD_UNBLOCKED'
+  | 'ASSIGNEE_CHANGED'
+  | 'LABEL_ADDED'
+  | 'LABEL_REMOVED'
+  | 'ACCEPTANCE_CRITERION_ADDED'
+  | 'ACCEPTANCE_CRITERION_UPDATED'
+  | 'ACCEPTANCE_CRITERION_COMPLETED'
+  | 'ACCEPTANCE_CRITERION_REOPENED'
+  | 'ACCEPTANCE_CRITERION_REMOVED'
+  | 'ACCEPTANCE_CRITERION_MOVED'
+  | 'COMMENT_ADDED'
+  | 'COMMENT_UPDATED'
+  | 'COMMENT_REMOVED'
+
+export interface CardHistoryActor {
+  id: string
+  name: string
+}
+
+/** `metadata` é heterogêneo por natureza (cada eventType guarda campos diferentes) — ver
+ * agent_docs/decisions/0015-card-history.md. Nunca editado/removido pela API (append-only). */
+export interface CardHistoryEvent {
+  id: string
+  eventType: CardHistoryEventType | (string & {})
+  actor: CardHistoryActor | null
+  metadata: Record<string, unknown>
+  createdAt: string
+}
+
+export interface CreateCommentRequest {
+  content: string
+}
+
+export interface UpdateCommentRequest {
+  content: string
+}
+
 export interface Card {
   id: string
   key: string
@@ -36,6 +115,9 @@ export interface Card {
   position: number
   acceptanceCriteria: AcceptanceCriterion[]
   labels: CardLabelSummary[]
+  assignee: CardAssigneeSummary | null
+  blocked: boolean
+  block: CardBlockInfo | null
   createdAt: string
   updatedAt: string
 }

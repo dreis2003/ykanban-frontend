@@ -1,6 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { Pencil } from 'lucide-react'
 import { AcceptanceCriteriaSection } from '@/features/card/components/AcceptanceCriteriaSection/AcceptanceCriteriaSection'
+import { CardActivitySection } from '@/features/card/components/CardActivitySection/CardActivitySection'
+import { CardAssigneeSection } from '@/features/card/components/CardAssigneeSection/CardAssigneeSection'
+import { CardBlockSection } from '@/features/card/components/CardBlockSection/CardBlockSection'
+import { CardCommentsSection } from '@/features/card/components/CardCommentsSection/CardCommentsSection'
 import { CardLabelsSection } from '@/features/card/components/CardLabelsSection/CardLabelsSection'
 import { CARD_PRIORITY_LABELS, CARD_TYPE_LABELS } from '@/features/card/labels'
 import { formatDate } from '@/shared/utils/formatDate'
@@ -15,6 +19,9 @@ interface Props {
   isError?: boolean
   canManage: boolean
   canManageLabelsCatalog: boolean
+  canManageAssignee: boolean
+  canManageBlock: boolean
+  canManageComments: boolean
   onEdit: () => void
   onClose: () => void
 }
@@ -32,6 +39,9 @@ export function CardDetailDialog({
   isError,
   canManage,
   canManageLabelsCatalog,
+  canManageAssignee,
+  canManageBlock,
+  canManageComments,
   onEdit,
   onClose,
 }: Props) {
@@ -70,6 +80,15 @@ export function CardDetailDialog({
 
             {card.description ? <p className={styles.description}>{card.description}</p> : null}
 
+            <CardBlockSection
+              cardId={card.id}
+              cardKey={card.key}
+              projectId={card.projectId}
+              blocked={card.blocked}
+              block={card.block}
+              canManage={canManageBlock}
+            />
+
             <dl className={styles.meta}>
               <div>
                 <dt>Tipo</dt>
@@ -93,6 +112,13 @@ export function CardDetailDialog({
               </div>
             </dl>
 
+            <CardAssigneeSection
+              cardId={card.id}
+              projectId={card.projectId}
+              assignee={card.assignee}
+              canManage={canManageAssignee}
+            />
+
             <CardLabelsSection
               cardId={card.id}
               projectId={card.projectId}
@@ -107,6 +133,10 @@ export function CardDetailDialog({
               criteria={card.acceptanceCriteria}
               canManage={canManage}
             />
+
+            <CardCommentsSection cardId={card.id} canManage={canManageComments} />
+
+            <CardActivitySection cardId={card.id} />
           </>
         ) : null}
 

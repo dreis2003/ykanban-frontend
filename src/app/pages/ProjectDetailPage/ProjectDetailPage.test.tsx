@@ -39,6 +39,14 @@ function pageOf(items: unknown[]) {
   return { content: items, page: 0, size: 200, totalElements: items.length, totalPages: items.length > 0 ? 1 : 0 }
 }
 
+function nth(elements: HTMLElement[], index: number): HTMLElement {
+  const element = elements[index]
+  if (!element) {
+    throw new Error(`Elemento no índice ${index} não encontrado (array tem ${elements.length} itens).`)
+  }
+  return element
+}
+
 function cardIdFromUrl(url: string): string {
   return url.match(/\/cards\/([^/?]+)/)?.[1] ?? ''
 }
@@ -104,6 +112,9 @@ function cardOf(
     position,
     acceptanceCriteria: [] as unknown[],
     labels: [] as unknown[],
+    assignee: null as unknown,
+    blocked: false,
+    block: null as unknown,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-05T00:00:00Z',
   }
@@ -919,6 +930,741 @@ describe('ProjectDetailPage', () => {
           within(managementDialog).getByText('Nenhuma label cadastrada. Crie labels para organizar os cards.'),
         ).toBeInTheDocument(),
       )
+    })
+  })
+
+  describe('Responsável', () => {
+    function userOf(id: string, name: string, email: string, status: 'ACTIVE' | 'INACTIVE' = 'ACTIVE') {
+      return { id, name, email, status, role: 'DEVELOPER' }
+    }
+
+    function usersPage(users: ReturnType<typeof userOf>[]) {
+      return { content: users, page: 0, size: 10, totalElements: users.length, totalPages: 1 }
+    }
+
+    it('mostra o avatar do responsável no KanbanCard e omite quando não há responsável', async () => {
+      const daniel = userOf('u2', 'Daniel Reis', 'daniel@ykanban.dev')
+      const cardWithAssignee = { ...CARD_BACKLOG_1, assignee: daniel }
+      mockFetchRouter(
+        boardAndProjectHandlers(BOARD, PROJECT, pageOf([CARD_BACKLOG_2, cardWithAssignee, CARD_DOING]), {
+          card1: cardWithAssignee,
+        }),
+      )
+
+      renderDetailPage('p1')
+      await screen.findByText('Backlog')
+
+      expect(screen.getByRole('img', { name: 'Daniel Reis' })).toHaveTextContent('DR')
+      // Só o card com assignee tem avatar — os outros dois (sem responsável) não renderizam nenhum.
+      expect(screen.getAllByRole('img')).toHaveLength(1)
+    })
+
+    it('permite atribuir um responsável pelo seletor com busca', async () => {
+      const user = userEvent.setup()
+      const daniel = userOf('u2', 'Daniel Reis', 'daniel@ykanban.dev')
+      let card = { ...CARD_BACKLOG_1 }
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+          const url = input.toString()
+          const method = (init?.method ?? 'GET').toUpperCase()
+          if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
+          if (method === 'GET' && url.includes('/users')) return Promise.resolve(jsonResponse(usersPage([daniel])))
+          if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(card))
+          if (method === 'POST' && url.includes('/cards/card1/assignee')) {
+            card = { ...card, assignee: daniel }
+            return Promise.resolve(jsonResponse(card))
+          }
+          return Promise.reject(new Error(`fetch inesperado: ${method} ${url}`))
+        }),
+      )
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Primeiro card do backlog')
+      await user.click(within(dialog).getByRole('button', { name: 'Atribuir responsável' }))
+      await user.click(await within(dialog).findByRole('button', { name: /Daniel Reis/ }))
+
+      expect(await within(dialog).findByText('Daniel Reis')).toBeInTheDocument()
+    })
+
+    it('remove o responsável e reverte em caso de erro do backend', async () => {
+      const user = userEvent.setup()
+      const daniel = userOf('u2', 'Daniel Reis', 'daniel@ykanban.dev')
+      const cardWithAssignee = { ...CARD_BACKLOG_1, assignee: daniel }
+      mockFetchRouter([
+        ...boardAndProjectHandlers(BOARD, PROJECT, CARDS_PAGE, { card1: cardWithAssignee }),
+        {
+          match: (url, method) => method === 'DELETE' && url.includes('/cards/card1/assignee'),
+          respond: () => jsonResponse({ title: 'Erro interno', status: 500, detail: 'Falha ao remover responsável.' }, 500),
+        },
+      ])
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Daniel Reis')
+
+      await user.click(within(dialog).getByRole('button', { name: 'Remover responsável' }))
+
+      expect(await within(dialog).findByText('Falha ao remover responsável.')).toBeInTheDocument()
+      expect(within(dialog).getByText('Daniel Reis')).toBeInTheDocument()
+    })
+
+    it('"Atribuir a mim" atribui o usuário autenticado', async () => {
+      const user = userEvent.setup()
+      let card = { ...CARD_BACKLOG_1 }
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+          const url = input.toString()
+          const method = (init?.method ?? 'GET').toUpperCase()
+          if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
+          if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(card))
+          if (method === 'POST' && url.includes('/cards/card1/assignee')) {
+            card = { ...card, assignee: userOf('u1', 'Ana', 'ana@ykanban.dev') }
+            return Promise.resolve(jsonResponse(card))
+          }
+          return Promise.reject(new Error(`fetch inesperado: ${method} ${url}`))
+        }),
+      )
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Primeiro card do backlog')
+      await user.click(within(dialog).getByRole('button', { name: 'Atribuir a mim' }))
+
+      expect(await within(dialog).findByText('Ana')).toBeInTheDocument()
+    })
+
+    it('VIEWER visualiza o responsável sem poder gerenciar', async () => {
+      const daniel = userOf('u2', 'Daniel Reis', 'daniel@ykanban.dev')
+      const cardWithAssignee = { ...CARD_BACKLOG_1, assignee: daniel }
+      mockFetchRouter(boardAndProjectHandlers(BOARD, PROJECT, CARDS_PAGE, { card1: cardWithAssignee }))
+
+      renderDetailPage('p1', 'VIEWER', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Daniel Reis')
+
+      expect(within(dialog).queryByRole('button', { name: 'Trocar responsável' })).not.toBeInTheDocument()
+      expect(within(dialog).queryByRole('button', { name: 'Remover responsável' })).not.toBeInTheDocument()
+    })
+
+    it('projeto arquivado mostra o responsável somente leitura', async () => {
+      const daniel = userOf('u2', 'Daniel Reis', 'daniel@ykanban.dev')
+      const cardWithAssignee = { ...CARD_BACKLOG_1, assignee: daniel }
+      mockFetchRouter(boardAndProjectHandlers(BOARD, ARCHIVED_PROJECT, CARDS_PAGE, { card1: cardWithAssignee }))
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Daniel Reis')
+
+      expect(within(dialog).queryByRole('button', { name: 'Trocar responsável' })).not.toBeInTheDocument()
+    })
+
+    it('responsável atual inativo continua visível com indicação discreta', async () => {
+      const inactiveUser = userOf('u2', 'Daniel Reis', 'daniel@ykanban.dev', 'INACTIVE')
+      const cardWithAssignee = { ...CARD_BACKLOG_1, assignee: inactiveUser }
+      mockFetchRouter(boardAndProjectHandlers(BOARD, PROJECT, CARDS_PAGE, { card1: cardWithAssignee }))
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Daniel Reis')
+
+      expect(within(dialog).getByText('Inativo')).toBeInTheDocument()
+      expect(within(dialog).getByRole('button', { name: 'Trocar responsável' })).toBeInTheDocument()
+    })
+  })
+
+  describe('Bloqueio', () => {
+    function blockOf(reason: string, blockedByName: string) {
+      return { reason, blockedAt: '2026-08-14T22:30:00Z', blockedBy: { id: 'u2', name: blockedByName } }
+    }
+
+    it('mostra "Não bloqueado" e nenhum indicador no KanbanCard quando o card não está bloqueado', async () => {
+      mockFetchRouter(boardAndProjectHandlers())
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+
+      expect(await within(dialog).findByText('Não bloqueado')).toBeInTheDocument()
+      expect(screen.queryByText('Bloqueado')).not.toBeInTheDocument()
+    })
+
+    it('mostra o indicador no KanbanCard e o motivo/responsável/data no detalhe quando bloqueado', async () => {
+      const blockedCard = { ...CARD_BACKLOG_1, blocked: true, block: blockOf('Aguardando API externa.', 'Daniel Reis') }
+      mockFetchRouter(
+        boardAndProjectHandlers(BOARD, PROJECT, pageOf([CARD_BACKLOG_2, blockedCard, CARD_DOING]), {
+          card1: blockedCard,
+        }),
+      )
+
+      renderDetailPage('p1')
+      await screen.findByText('Backlog')
+
+      expect(screen.getByText('Bloqueado')).toBeInTheDocument()
+
+      await userEvent.setup().click(screen.getByText('Primeiro card do backlog'))
+      const dialog = await screen.findByRole('dialog')
+      expect(await within(dialog).findByText('Card bloqueado')).toBeInTheDocument()
+      expect(within(dialog).getByText('Aguardando API externa.')).toBeInTheDocument()
+      expect(within(dialog).getByText(/Bloqueado por Daniel Reis em/)).toBeInTheDocument()
+    })
+
+    it('permite bloquear o card informando o motivo', async () => {
+      const user = userEvent.setup()
+      let card = { ...CARD_BACKLOG_1 }
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+          const url = input.toString()
+          const method = (init?.method ?? 'GET').toUpperCase()
+          if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
+          if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(card))
+          if (method === 'POST' && url.includes('/cards/card1/block')) {
+            card = { ...card, blocked: true, block: blockOf('Aguardando definição da regra.', 'Ana') }
+            return Promise.resolve(jsonResponse(card))
+          }
+          return Promise.reject(new Error(`fetch inesperado: ${method} ${url}`))
+        }),
+      )
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Primeiro card do backlog')
+      await user.click(within(dialog).getByRole('button', { name: 'Bloquear Card' }))
+      await user.type(within(dialog).getByLabelText('Motivo do bloqueio'), 'Aguardando definição da regra.')
+      await user.click(within(dialog).getByRole('button', { name: 'Bloquear' }))
+
+      expect(await within(dialog).findByText('Card bloqueado')).toBeInTheDocument()
+      expect(within(dialog).getByText('Aguardando definição da regra.')).toBeInTheDocument()
+    })
+
+    it('valida o motivo do bloqueio no cliente antes de enviar', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter(boardAndProjectHandlers())
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Primeiro card do backlog')
+      await user.click(within(dialog).getByRole('button', { name: 'Bloquear Card' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Bloquear' }))
+
+      expect(await within(dialog).findByText('Informe o motivo do bloqueio.')).toBeInTheDocument()
+    })
+
+    it('mostra erro amigável quando o backend rejeita o bloqueio', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter([
+        ...boardAndProjectHandlers(),
+        {
+          match: (url, method) => method === 'POST' && url.includes('/cards/card1/block'),
+          respond: () => jsonResponse({ title: 'Card já bloqueado', status: 409, detail: 'O card já está bloqueado.' }, 409),
+        },
+      ])
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Primeiro card do backlog')
+      await user.click(within(dialog).getByRole('button', { name: 'Bloquear Card' }))
+      await user.type(within(dialog).getByLabelText('Motivo do bloqueio'), 'Motivo válido para o teste.')
+      await user.click(within(dialog).getByRole('button', { name: 'Bloquear' }))
+
+      expect(await within(dialog).findByText('O card já está bloqueado.')).toBeInTheDocument()
+    })
+
+    it('permite desbloquear o card após confirmação', async () => {
+      const user = userEvent.setup()
+      let card: { blocked: boolean; block: ReturnType<typeof blockOf> | null } & Record<string, unknown> = {
+        ...CARD_BACKLOG_1,
+        blocked: true,
+        block: blockOf('Motivo válido para o teste.', 'Ana'),
+      }
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+          const url = input.toString()
+          const method = (init?.method ?? 'GET').toUpperCase()
+          if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
+          if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(card))
+          if (method === 'POST' && url.includes('/cards/card1/unblock')) {
+            card = { ...card, blocked: false, block: null }
+            return Promise.resolve(jsonResponse(card))
+          }
+          return Promise.reject(new Error(`fetch inesperado: ${method} ${url}`))
+        }),
+      )
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Card bloqueado')
+      await user.click(within(dialog).getByRole('button', { name: 'Desbloquear' }))
+      const confirmDialog = (await screen.findByText('Desbloquear YK-1?')).closest('dialog') as HTMLElement
+      await user.click(within(confirmDialog).getByRole('button', { name: 'Desbloquear' }))
+
+      expect(await within(dialog).findByText('Não bloqueado')).toBeInTheDocument()
+    })
+
+    it('VIEWER visualiza o bloqueio sem poder gerenciar', async () => {
+      const blockedCard = { ...CARD_BACKLOG_1, blocked: true, block: blockOf('Motivo válido para o teste.', 'Daniel Reis') }
+      mockFetchRouter(boardAndProjectHandlers(BOARD, PROJECT, CARDS_PAGE, { card1: blockedCard }))
+
+      renderDetailPage('p1', 'VIEWER', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Card bloqueado')
+
+      expect(within(dialog).queryByRole('button', { name: 'Desbloquear' })).not.toBeInTheDocument()
+    })
+
+    it('projeto arquivado mostra o bloqueio somente leitura', async () => {
+      const blockedCard = { ...CARD_BACKLOG_1, blocked: true, block: blockOf('Motivo válido para o teste.', 'Daniel Reis') }
+      mockFetchRouter(boardAndProjectHandlers(BOARD, ARCHIVED_PROJECT, CARDS_PAGE, { card1: blockedCard }))
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Card bloqueado')
+
+      expect(within(dialog).queryByRole('button', { name: 'Desbloquear' })).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Comentários', () => {
+    // authValue() sempre usa id 'u1' para o usuário logado — 'u1' simula "comentário próprio",
+    // qualquer outro id simula "comentário de outra pessoa".
+    function commentOf(
+      id: string,
+      content: string | null,
+      authorId: string,
+      authorName: string,
+      createdAt: string,
+      updatedAt: string = createdAt,
+      deleted = false,
+    ) {
+      return { id, content, author: { id: authorId, name: authorName }, createdAt, updatedAt, deleted }
+    }
+
+    function commentsPageOf(items: unknown[], page = 0, totalPages = 1, totalElements = items.length) {
+      return { content: items, page, size: 20, totalElements, totalPages }
+    }
+
+    function isCommentsListRequest(url: string): boolean {
+      return /\/cards\/card1\/comments(\?|$)/.test(url)
+    }
+
+    it('mostra estado vazio com composer para quem pode comentar', async () => {
+      mockFetchRouter([
+        ...boardAndProjectHandlers(),
+        { match: (url, method) => method === 'GET' && isCommentsListRequest(url), respond: () => jsonResponse(commentsPageOf([])) },
+      ])
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+
+      expect(await within(dialog).findByText(/Nenhum comentário ainda/)).toBeInTheDocument()
+      expect(within(dialog).getByLabelText('Adicionar comentário')).toBeInTheDocument()
+    })
+
+    it('VIEWER não vê o composer nem ações de gerenciamento', async () => {
+      mockFetchRouter([
+        ...boardAndProjectHandlers(),
+        {
+          match: (url, method) => method === 'GET' && isCommentsListRequest(url),
+          respond: () =>
+            jsonResponse(commentsPageOf([commentOf('cm1', 'Comentário existente.', 'u2', 'Maria', '2026-08-14T20:00:00Z')])),
+        },
+      ])
+
+      renderDetailPage('p1', 'VIEWER', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Comentário existente.')
+
+      expect(within(dialog).queryByLabelText('Adicionar comentário')).not.toBeInTheDocument()
+      expect(within(dialog).queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument()
+      expect(within(dialog).queryByRole('button', { name: 'Remover' })).not.toBeInTheDocument()
+    })
+
+    it('mostra comentários em ordem cronológica com autor e data', async () => {
+      mockFetchRouter([
+        ...boardAndProjectHandlers(),
+        {
+          match: (url, method) => method === 'GET' && isCommentsListRequest(url),
+          respond: () =>
+            jsonResponse(
+              commentsPageOf([
+                commentOf('cm1', 'Precisamos validar a regra.', 'u2', 'Maria', '2026-08-14T20:00:00Z'),
+                commentOf('cm2', 'Regra confirmada.', 'u1', 'Ana', '2026-08-14T20:30:00Z'),
+              ]),
+            ),
+        },
+      ])
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Precisamos validar a regra.')
+
+      const items = within(dialog).getAllByRole('listitem')
+      expect(within(nth(items, 0)).getByText('Maria')).toBeInTheDocument()
+      expect(within(nth(items, 0)).getByText('Precisamos validar a regra.')).toBeInTheDocument()
+      expect(within(nth(items, 1)).getByText('Ana')).toBeInTheDocument()
+      expect(within(nth(items, 1)).getByText('Regra confirmada.')).toBeInTheDocument()
+    })
+
+    it('permite criar um comentário, que aparece na conversa sem recarregar a página', async () => {
+      const user = userEvent.setup()
+      let comments: ReturnType<typeof commentOf>[] = []
+      const created = commentOf('cm1', 'Comentário novo.', 'u1', 'Ana', '2026-08-14T21:00:00Z')
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+          const url = input.toString()
+          const method = (init?.method ?? 'GET').toUpperCase()
+          if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
+          if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(CARD_BACKLOG_1))
+          if (method === 'GET' && isCommentsListRequest(url)) return Promise.resolve(jsonResponse(commentsPageOf(comments)))
+          if (method === 'POST' && url.includes('/cards/card1/comments')) {
+            comments = [created]
+            return Promise.resolve(jsonResponse(created, 201))
+          }
+          return Promise.reject(new Error(`fetch inesperado: ${method} ${url}`))
+        }),
+      )
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText(/Nenhum comentário ainda/)
+
+      await user.type(within(dialog).getByLabelText('Adicionar comentário'), 'Comentário novo.')
+      await user.click(within(dialog).getByRole('button', { name: 'Comentar' }))
+
+      expect(await within(dialog).findByText('Comentário novo.')).toBeInTheDocument()
+      expect(within(dialog).getByLabelText('Adicionar comentário')).toHaveValue('')
+    })
+
+    it('permite editar o próprio comentário e indica "editado"', async () => {
+      const user = userEvent.setup()
+      let comment = commentOf('cm1', 'Texto original.', 'u1', 'Ana', '2026-08-14T20:00:00Z')
+      mockFetchRouter([
+        ...boardAndProjectHandlers(),
+        { match: (url, method) => method === 'GET' && isCommentsListRequest(url), respond: () => jsonResponse(commentsPageOf([comment])) },
+        {
+          match: (url, method) => method === 'PATCH' && url.includes('/comments/cm1'),
+          respond: () => {
+            comment = { ...comment, content: 'Texto corrigido.', updatedAt: '2026-08-14T20:05:00Z' }
+            return jsonResponse(comment)
+          },
+        },
+      ])
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Texto original.')
+
+      // getByRole('Editar') sozinho seria ambíguo: o próprio Card também tem um botão "Editar".
+      const commentItem = nth(within(dialog).getAllByRole('listitem'), 0)
+      await user.click(within(commentItem).getByRole('button', { name: 'Editar' }))
+      const editField = within(dialog).getByLabelText('Editar comentário de Ana')
+      await user.clear(editField)
+      await user.type(editField, 'Texto corrigido.')
+      await user.click(within(dialog).getByRole('button', { name: 'Salvar' }))
+
+      expect(await within(dialog).findByText('Texto corrigido.')).toBeInTheDocument()
+      expect(within(dialog).getByText('editado')).toBeInTheDocument()
+    })
+
+    it('não mostra ação de editar em comentário de outro usuário', async () => {
+      mockFetchRouter([
+        ...boardAndProjectHandlers(),
+        {
+          match: (url, method) => method === 'GET' && isCommentsListRequest(url),
+          respond: () =>
+            jsonResponse(commentsPageOf([commentOf('cm1', 'Comentário de outra pessoa.', 'u2', 'Maria', '2026-08-14T20:00:00Z')])),
+        },
+      ])
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Comentário de outra pessoa.')
+
+      // Escopado ao item do comentário — o Card em si tem seu próprio botão "Editar".
+      const commentItem = nth(within(dialog).getAllByRole('listitem'), 0)
+      expect(within(commentItem).queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument()
+    })
+
+    it('permite remover o próprio comentário e mostra o placeholder preservando autor e posição', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter([
+        ...boardAndProjectHandlers(),
+        {
+          match: (url, method) => method === 'GET' && isCommentsListRequest(url),
+          respond: () =>
+            jsonResponse(
+              commentsPageOf([
+                commentOf('cm1', 'Vou remover este.', 'u1', 'Ana', '2026-08-14T20:00:00Z'),
+                commentOf('cm2', 'Comentário seguinte.', 'u2', 'Maria', '2026-08-14T20:10:00Z'),
+              ]),
+            ),
+        },
+        {
+          match: (url, method) => method === 'DELETE' && url.includes('/comments/cm1'),
+          respond: () => ({ ok: true, status: 204, headers: new Headers(), json: () => Promise.resolve(undefined) }) as Response,
+        },
+      ])
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Vou remover este.')
+
+      // ADMIN vê "Remover" nos dois comentários — escolhe o primeiro (o próprio, "cm1").
+      const firstItem = nth(within(dialog).getAllByRole('listitem'), 0)
+      await user.click(within(firstItem).getByRole('button', { name: 'Remover' }))
+      const confirmDialog = (await screen.findByText('Remover este comentário?')).closest('dialog') as HTMLElement
+      await user.click(within(confirmDialog).getByRole('button', { name: 'Remover' }))
+
+      expect(await within(dialog).findByText('Comentário removido.')).toBeInTheDocument()
+      expect(within(dialog).queryByText('Vou remover este.')).not.toBeInTheDocument()
+      // Autor e posição cronológica permanecem — só o conteúdo some.
+      const items = within(dialog).getAllByRole('listitem')
+      expect(within(nth(items, 0)).getByText('Ana')).toBeInTheDocument()
+      expect(within(nth(items, 1)).getByText('Comentário seguinte.')).toBeInTheDocument()
+    })
+
+    it('ADMIN pode remover comentário de outro usuário', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter([
+        ...boardAndProjectHandlers(),
+        {
+          match: (url, method) => method === 'GET' && isCommentsListRequest(url),
+          respond: () => jsonResponse(commentsPageOf([commentOf('cm1', 'Comentário alheio.', 'u2', 'Maria', '2026-08-14T20:00:00Z')])),
+        },
+        {
+          match: (url, method) => method === 'DELETE' && url.includes('/comments/cm1'),
+          respond: () => ({ ok: true, status: 204, headers: new Headers(), json: () => Promise.resolve(undefined) }) as Response,
+        },
+      ])
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Comentário alheio.')
+      await user.click(within(dialog).getByRole('button', { name: 'Remover' }))
+      const confirmDialog = (await screen.findByText('Remover este comentário?')).closest('dialog') as HTMLElement
+      await user.click(within(confirmDialog).getByRole('button', { name: 'Remover' }))
+
+      expect(await within(dialog).findByText('Comentário removido.')).toBeInTheDocument()
+    })
+
+    it('mostra erro de carregamento com opção de tentar novamente', async () => {
+      const user = userEvent.setup()
+      let shouldFail = true
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+          const url = input.toString()
+          const method = (init?.method ?? 'GET').toUpperCase()
+          if (method === 'GET' && url.includes('/projects/p1/board')) return Promise.resolve(jsonResponse(BOARD))
+          if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS_PAGE))
+          if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
+          if (method === 'GET' && isIndividualCardRequest(url)) return Promise.resolve(jsonResponse(CARD_BACKLOG_1))
+          if (method === 'GET' && isCommentsListRequest(url)) {
+            if (shouldFail) {
+              shouldFail = false
+              return Promise.reject(new Error('Falha de rede simulada.'))
+            }
+            return Promise.resolve(jsonResponse(commentsPageOf([])))
+          }
+          if (method === 'GET' && url.includes('/cards/card1/history')) {
+            return Promise.resolve(jsonResponse(pageOf([])))
+          }
+          return Promise.reject(new Error(`fetch inesperado: ${method} ${url}`))
+        }),
+      )
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Não foi possível carregar os comentários.')
+
+      await user.click(within(dialog).getByRole('button', { name: 'Tentar novamente' }))
+
+      expect(await within(dialog).findByText(/Nenhum comentário ainda/)).toBeInTheDocument()
+    })
+
+    it('"Carregar mais" busca a próxima página e a acrescenta ao final, mantendo a ordem', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter([
+        ...boardAndProjectHandlers(),
+        {
+          match: (url, method) => method === 'GET' && isCommentsListRequest(url) && url.includes('page=1'),
+          respond: () =>
+            jsonResponse(commentsPageOf([commentOf('cm2', 'Comentário mais recente.', 'u2', 'Maria', '2026-08-14T20:10:00Z')], 1, 2, 2)),
+        },
+        {
+          match: (url, method) => method === 'GET' && isCommentsListRequest(url),
+          respond: () =>
+            jsonResponse(commentsPageOf([commentOf('cm1', 'Comentário mais antigo.', 'u1', 'Ana', '2026-08-14T20:00:00Z')], 0, 2, 2)),
+        },
+      ])
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Comentário mais antigo.')
+
+      await user.click(within(dialog).getByRole('button', { name: 'Carregar mais' }))
+
+      await within(dialog).findByText('Comentário mais recente.')
+      const items = within(dialog).getAllByRole('listitem')
+      expect(within(nth(items, 0)).getByText('Comentário mais antigo.')).toBeInTheDocument()
+      expect(within(nth(items, 1)).getByText('Comentário mais recente.')).toBeInTheDocument()
+    })
+
+    it('renderiza conteúdo com marcação HTML como texto literal, sem executar', async () => {
+      const malicious = '<script>alert(1)</script>'
+      mockFetchRouter([
+        ...boardAndProjectHandlers(),
+        {
+          match: (url, method) => method === 'GET' && isCommentsListRequest(url),
+          respond: () => jsonResponse(commentsPageOf([commentOf('cm1', malicious, 'u2', 'Maria', '2026-08-14T20:00:00Z')])),
+        },
+      ])
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+
+      // Encontrar a string literal como texto (não como markup interpretado) já prova que nada usa
+      // dangerouslySetInnerHTML — se fosse renderizado como HTML, não haveria esse texto para achar.
+      expect(await within(dialog).findByText(malicious)).toBeInTheDocument()
+    })
+  })
+
+  describe('Atividade', () => {
+    function eventOf(id: string, eventType: string, actorName: string, metadata: Record<string, unknown>, createdAt: string) {
+      return { id, eventType, actor: { id: 'u9', name: actorName }, metadata, createdAt }
+    }
+
+    function isHistoryListRequest(url: string): boolean {
+      return /\/cards\/card1\/history(\?|$)/.test(url)
+    }
+
+    it('mostra estado vazio quando não há atividade', async () => {
+      mockFetchRouter([
+        ...boardAndProjectHandlers(),
+        { match: (url, method) => method === 'GET' && isHistoryListRequest(url), respond: () => jsonResponse(pageOf([])) },
+      ])
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+
+      expect(await within(dialog).findByText('Nenhuma atividade registrada ainda.')).toBeInTheDocument()
+    })
+
+    it('mostra eventos formatados com data, mais recente primeiro', async () => {
+      mockFetchRouter([
+        ...boardAndProjectHandlers(),
+        {
+          match: (url, method) => method === 'GET' && isHistoryListRequest(url),
+          respond: () =>
+            jsonResponse(
+              pageOf([
+                eventOf('h2', 'CARD_BLOCKED', 'Ana', { reason: 'Aguardando API externa.' }, '2026-08-14T21:00:00Z'),
+                eventOf('h1', 'CARD_CREATED', 'Ana', { key: 'YK-1' }, '2026-08-14T20:00:00Z'),
+              ]),
+            ),
+        },
+      ])
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText(/Ana bloqueou o card/)
+
+      const items = within(dialog).getAllByRole('listitem').filter((item) => within(item).queryByText(/Ana/))
+      expect(within(nth(items, 0)).getByText('Aguardando API externa.')).toBeInTheDocument()
+      expect(within(nth(items, 1)).getByText('Ana criou o card YK-1.')).toBeInTheDocument()
+    })
+
+    it('usa fallback seguro para eventType desconhecido', async () => {
+      mockFetchRouter([
+        ...boardAndProjectHandlers(),
+        {
+          match: (url, method) => method === 'GET' && isHistoryListRequest(url),
+          respond: () => jsonResponse(pageOf([eventOf('h1', 'AGENT_STARTED', 'Ana', {}, '2026-08-14T20:00:00Z')])),
+        },
+      ])
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+
+      expect(await within(dialog).findByText('Atividade registrada.')).toBeInTheDocument()
+    })
+
+    it('mostra erro de carregamento com opção de tentar novamente', async () => {
+      const user = userEvent.setup()
+      let shouldFail = true
+      mockFetchRouter([
+        ...boardAndProjectHandlers(),
+        { match: (url, method) => method === 'GET' && url.includes('/cards/card1/comments'), respond: () => jsonResponse(pageOf([])) },
+        {
+          match: (url, method) => method === 'GET' && isHistoryListRequest(url),
+          respond: () => {
+            if (shouldFail) {
+              shouldFail = false
+              return Promise.reject(new Error('Falha de rede simulada.'))
+            }
+            return jsonResponse(pageOf([]))
+          },
+        },
+      ])
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText('Não foi possível carregar o histórico.')
+
+      await user.click(within(dialog).getByRole('button', { name: 'Tentar novamente' }))
+
+      expect(await within(dialog).findByText('Nenhuma atividade registrada ainda.')).toBeInTheDocument()
+    })
+
+    it('"Carregar mais atividades" busca a próxima página de eventos mais antigos', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter([
+        ...boardAndProjectHandlers(),
+        {
+          match: (url, method) => method === 'GET' && isHistoryListRequest(url) && url.includes('page=1'),
+          respond: () =>
+            jsonResponse({
+              content: [eventOf('h1', 'CARD_CREATED', 'Ana', { key: 'YK-1' }, '2026-08-14T20:00:00Z')],
+              page: 1,
+              size: 1,
+              totalElements: 2,
+              totalPages: 2,
+            }),
+        },
+        {
+          match: (url, method) => method === 'GET' && isHistoryListRequest(url),
+          respond: () =>
+            jsonResponse({
+              content: [eventOf('h2', 'CARD_BLOCKED', 'Ana', { reason: 'Motivo.' }, '2026-08-14T21:00:00Z')],
+              page: 0,
+              size: 1,
+              totalElements: 2,
+              totalPages: 2,
+            }),
+        },
+      ])
+
+      renderDetailPage('p1', 'ADMIN', '/projects/p1/cards/card1')
+      const dialog = await screen.findByRole('dialog')
+      await within(dialog).findByText(/Ana bloqueou o card/)
+
+      await user.click(within(dialog).getByRole('button', { name: 'Carregar mais atividades' }))
+
+      expect(await within(dialog).findByText('Ana criou o card YK-1.')).toBeInTheDocument()
     })
   })
 })

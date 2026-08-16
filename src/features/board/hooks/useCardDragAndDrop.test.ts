@@ -29,6 +29,9 @@ function cardIn(columnId: string, id: string, position: number): Card {
     position,
     acceptanceCriteria: [],
     labels: [],
+    assignee: null,
+    blocked: false,
+    block: null,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
   }
@@ -108,6 +111,39 @@ describe('useCardDragAndDrop', () => {
     expect(movedCard?.position).toBe(2)
     expect(call.optimisticCards.find((c) => c.id === 'c2')?.position).toBe(1)
     expect(call.optimisticCards.find((c) => c.id === 'c3')?.position).toBe(1)
+  })
+
+  it('preserves blocked/block fields on a blocked card through same-column reorder and cross-column move', () => {
+    const blockInfo = { reason: 'Motivo válido.', blockedAt: '2026-01-01T00:00:00Z', blockedBy: { id: 'u1', name: 'Ana' } }
+    const blockedCard = { ...cardIn('col-backlog', 'c1', 1), blocked: true, block: blockInfo }
+    const cardsByColumnId = new Map<string, Card[]>([
+      ['col-backlog', [blockedCard, cardIn('col-backlog', 'c2', 2)]],
+      ['col-doing', []],
+    ])
+    const onMove = vi.fn<(result: MoveResult) => void>()
+    const { result } = renderHook(() =>
+      useCardDragAndDrop({ board: BOARD, cardsByColumnId, disabled: false, onMove }),
+    )
+
+    // Reordena dentro da mesma coluna — bloqueio nunca é removido implicitamente pela movimentação.
+    act(() => result.current.handleDragStart(dragStart('c1')))
+    act(() => result.current.handleDragOver(dragOver('c1', 'c2')))
+    act(() => result.current.handleDragEnd(dragEnd('c1', 'c2')))
+    let moved = firstCallResult(onMove).optimisticCards.find((c) => c.id === 'c1')
+    expect(moved?.blocked).toBe(true)
+    expect(moved?.block).toEqual(blockInfo)
+
+    onMove.mockClear()
+
+    // Move (nesta camada puramente visual, sem regra de negócio) para outra coluna — o preview
+    // continua preservando o estado de bloqueio; a decisão de permitir/rejeitar o avanço é do
+    // backend (ver CardService#move e ADR 0013).
+    act(() => result.current.handleDragStart(dragStart('c1')))
+    act(() => result.current.handleDragOver(dragOver('c1', columnDroppableId('col-doing'))))
+    act(() => result.current.handleDragEnd(dragEnd('c1', columnDroppableId('col-doing'))))
+    moved = firstCallResult(onMove).optimisticCards.find((c) => c.id === 'c1')
+    expect(moved?.blocked).toBe(true)
+    expect(moved?.block).toEqual(blockInfo)
   })
 
   it('drops into an empty column at position 1', () => {

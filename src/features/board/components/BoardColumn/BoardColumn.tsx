@@ -17,6 +17,10 @@ interface Props {
   onCardClick: (card: Card) => void
   dragDisabled: boolean
   wipBlocked: boolean
+  /** Card bloqueado sendo arrastado sobre uma coluna posterior no fluxo — o backend é sempre a
+   * autoridade (rejeita com 409 e o board reverte), isto é só um aviso durante o arrasto, mesmo
+   * padrão já usado para `wipBlocked`. */
+  cardBlockedFromAdvancing: boolean
 }
 
 export function BoardColumn({
@@ -29,6 +33,7 @@ export function BoardColumn({
   onCardClick,
   dragDisabled,
   wipBlocked,
+  cardBlockedFromAdvancing,
 }: Props) {
   // position ASC é a ordem de exibição — nunca confiar na ordem de retorno da API por si só.
   const orderedCards = [...cards].sort((a, b) => a.position - b.position)
@@ -67,8 +72,13 @@ export function BoardColumn({
         ref={setNodeRef}
         className={styles.body}
         data-drop-active={isOver}
-        data-drop-blocked={isOver && wipBlocked}
+        data-drop-blocked={isOver && (wipBlocked || cardBlockedFromAdvancing)}
       >
+        {isOver && cardBlockedFromAdvancing ? (
+          <p className={styles.dropWarning} role="status">
+            🚫 Card bloqueado não pode avançar
+          </p>
+        ) : null}
         {orderedCards.length === 0 ? (
           <p className={styles.emptyState}>Nenhum card</p>
         ) : (

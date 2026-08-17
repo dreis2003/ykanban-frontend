@@ -1,0 +1,158 @@
+/**
+ * Acento escopado a esta área (ver ADR 0023, item 154): mesma escala de espaçamento/raio/
+ * tipografia do design system, mas com um acento índigo em vez do vermelho da UI de Tenant —
+ * sinal visual imediato de "isto não é a organização, é a plataforma". Nunca redefine tokens
+ * globais em :root, só localmente sob [data-area='platform'].
+ */
+.shell {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  --color-accent: #3730a3;
+  --color-accent-hover: #2f2a86;
+  --color-text-on-accent: #f5f4ff;
+  --color-focus-ring: rgba(55, 48, 163, 0.4);
+}
+
+@media (prefers-color-scheme: dark) {
+  .shell:not([data-theme='light']) {
+    --color-accent: #818cf8;
+    --color-accent-hover: #a5b4fc;
+    --color-text-on-accent: #1a1a2e;
+    --color-focus-ring: rgba(129, 140, 248, 0.45);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 2px solid var(--color-accent);
+  background-color: var(--color-bg-elevated);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.brandMark {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  background-color: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
+  flex-shrink: 0;
+}
+
+.brandText {
+  display: flex;
+  flex-direction: column;
+  line-height: var(--line-height-tight);
+}
+
+.brandName {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-md);
+}
+
+.brandSub {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-accent);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.navLink,
+.navLinkActive {
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.navLink {
+  color: var(--color-text-muted);
+}
+
+.navLink:hover {
+  color: var(--color-text);
+}
+
+.navLinkActive {
+  color: var(--color-accent);
+  background-color: var(--color-bg-sunken);
+}
+
+.session {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.userName {
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+}
+
+.exit {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  text-decoration: underline;
+}
+
+.exit:hover {
+  color: var(--color-text);
+}
+
+.logout {
+  appearance: none;
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.logout:hover {
+  border-color: var(--color-accent);
+  background-color: var(--color-bg-sunken);
+}
+
+.main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-6) var(--space-5);
+  overflow-y: auto;
+}
+
+@media (min-width: 768px) {
+  .main {
+    padding: var(--space-8) var(--space-6);
+  }
+}

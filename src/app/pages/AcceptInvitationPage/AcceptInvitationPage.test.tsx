@@ -31,6 +31,7 @@ function authValue(overrides: Partial<AuthContextValue> = {}): AuthContextValue 
     membershipRole: null,
     membershipStatus: null,
     authenticationContext: null,
+    platformRoles: [],
     availableTenants: [],
     isAuthenticated: false,
     isTenantSelected: false,

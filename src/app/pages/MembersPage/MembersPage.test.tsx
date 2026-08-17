@@ -69,6 +69,7 @@ function authValue(overrides: Partial<AuthContextValue> = {}): AuthContextValue 
     membershipRole: 'ADMIN',
     membershipStatus: 'ACTIVE',
     authenticationContext: 'TENANT_ACCESS',
+    platformRoles: [],
     availableTenants: [],
     isAuthenticated: true,
     isTenantSelected: true,

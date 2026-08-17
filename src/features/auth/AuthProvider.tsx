@@ -44,6 +44,7 @@ const EMPTY_SESSION: SessionState = {
 export function AuthProvider({ children }: Props) {
   const [session, setSession] = useState<SessionState>(EMPTY_SESSION)
   const [availableTenants, setAvailableTenants] = useState<AvailableTenant[]>([])
+  const [platformRoles, setPlatformRoles] = useState<string[]>([])
   const [status, setStatus] = useState<Status>('loading')
   const queryClient = useQueryClient()
 
@@ -62,6 +63,7 @@ export function AuthProvider({ children }: Props) {
     authSession.setAccessToken(null)
     setSession(EMPTY_SESSION)
     setAvailableTenants([])
+    setPlatformRoles([])
     setStatus('unauthenticated')
     void resetQueryCache()
   }, [resetQueryCache])
@@ -87,6 +89,7 @@ export function AuthProvider({ children }: Props) {
         membershipStatus: me.membership?.status ?? null,
         authenticationContext: me.context,
       })
+      setPlatformRoles(me.platform?.roles ?? [])
       setStatus('authenticated')
       if (me.context === 'TENANT_SELECTION') {
         await fetchAvailableTenants()
@@ -119,6 +122,18 @@ export function AuthProvider({ children }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- roda só na montagem, por design.
   }, [])
 
+  /** `LoginResponse`/`TenantSelectionResponse` não carregam `platform` (só `/auth/me` carrega, ver
+   * ADR 0023) — buscado em segundo plano, best-effort, para nunca atrasar/bloquear login ou troca
+   * de Tenant por conta de uma role ortogonal e rara. */
+  const refreshPlatformRoles = useCallback(async () => {
+    try {
+      const me = await authApi.me()
+      setPlatformRoles(me.platform?.roles ?? [])
+    } catch {
+      // Best-effort — próxima chamada a refreshSession() tenta de novo.
+    }
+  }, [])
+
   /** Corpo comum de `login` e `completeInvitationRegistration` — as duas APIs devolvem exatamente
    * a mesma forma (`LoginResponse`), já que registrar-se por convite também autentica na hora
    * (ver ADR 0022, item 80). */
@@ -139,8 +154,9 @@ export function AuthProvider({ children }: Props) {
       } else {
         setAvailableTenants([])
       }
+      void refreshPlatformRoles()
     },
-    [fetchAvailableTenants, resetQueryCache],
+    [fetchAvailableTenants, resetQueryCache, refreshPlatformRoles],
   )
 
   const login = useCallback(
@@ -177,8 +193,9 @@ export function AuthProvider({ children }: Props) {
       }))
       setAvailableTenants([])
       await resetQueryCache()
+      void refreshPlatformRoles()
     },
-    [resetQueryCache],
+    [resetQueryCache, refreshPlatformRoles],
   )
 
   const selectTenant = useCallback(
@@ -208,6 +225,7 @@ export function AuthProvider({ children }: Props) {
       membershipStatus: me.membership?.status ?? null,
       authenticationContext: me.context,
     })
+    setPlatformRoles(me.platform?.roles ?? [])
     if (me.context === 'TENANT_SELECTION') {
       await fetchAvailableTenants()
     }
@@ -231,6 +249,7 @@ export function AuthProvider({ children }: Props) {
       membershipRole: session.membershipRole,
       membershipStatus: session.membershipStatus,
       authenticationContext: session.authenticationContext,
+      platformRoles,
       availableTenants,
       isAuthenticated: status === 'authenticated',
       isTenantSelected: status === 'authenticated' && session.activeTenant !== null,
@@ -246,6 +265,7 @@ export function AuthProvider({ children }: Props) {
     [
       session,
       availableTenants,
+      platformRoles,
       status,
       login,
       selectTenant,

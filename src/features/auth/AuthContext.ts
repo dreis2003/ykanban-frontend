@@ -16,6 +16,11 @@ export interface AuthContextValue {
   membershipRole: MembershipRole | null
   membershipStatus: MembershipStatus | null
   authenticationContext: AuthenticationContext | null
+  /** Roles de plataforma (ex.: `PLATFORM_ADMIN`) — ortogonais ao Tenant ativo (ver ADR 0023).
+   * Só é populado via `/auth/me` (nem `LoginResponse` nem `TenantSelectionResponse` carregam isso
+   * hoje); pode ficar momentaneamente `[]` logo após login/seleção de Tenant até o próximo
+   * `refreshSession`/reconsulta em segundo plano. */
+  platformRoles: string[]
   availableTenants: AvailableTenant[]
   isAuthenticated: boolean
   /** {@code true} quando existe um Tenant ativo — endpoints de negócio só funcionam nesse estado. */

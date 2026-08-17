@@ -19,7 +19,7 @@ const ROLE_LABELS: Record<MembershipRole, string> = {
  * features que as exigirem.
  */
 export function MainLayout() {
-  const { user, activeTenant, membershipRole, logout, refreshAvailableTenants } = useAuth()
+  const { user, activeTenant, membershipRole, platformRoles, logout, refreshAvailableTenants } = useAuth()
   const navigate = useNavigate()
 
   const handleSwitchOrganization = useCallback(() => {
@@ -39,14 +39,24 @@ export function MainLayout() {
           </div>
         </div>
 
-        {membershipRole === 'ADMIN' ? (
+        {membershipRole === 'ADMIN' || platformRoles.includes('PLATFORM_ADMIN') ? (
           <nav className={styles.nav}>
-            <NavLink
-              to={ROUTES.members}
-              className={({ isActive }) => (isActive ? styles.navLinkActive : styles.navLink)}
-            >
-              Membros
-            </NavLink>
+            {membershipRole === 'ADMIN' ? (
+              <NavLink
+                to={ROUTES.members}
+                className={({ isActive }) => (isActive ? styles.navLinkActive : styles.navLink)}
+              >
+                Membros
+              </NavLink>
+            ) : null}
+            {platformRoles.includes('PLATFORM_ADMIN') ? (
+              <NavLink
+                to={ROUTES.platformDashboard}
+                className={({ isActive }) => (isActive ? styles.navLinkActive : styles.navLink)}
+              >
+                Administração da Plataforma
+              </NavLink>
+            ) : null}
           </nav>
         ) : null}
 

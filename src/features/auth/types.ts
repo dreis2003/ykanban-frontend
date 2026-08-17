@@ -46,9 +46,18 @@ export interface TenantSelectionResponse {
   membershipRole: MembershipRole
 }
 
+/** Ortogonal a `tenant`/`membership` (ver ADR 0023) — presente independentemente do contexto de
+ * Tenant; um Platform Admin sem nenhum Tenant ativo ainda recebe suas roles de plataforma aqui. */
+export interface PlatformSummary {
+  roles: string[]
+}
+
 export interface MeResponse {
   user: AuthUser
   context: AuthenticationContext
   tenant: Tenant | null
   membership: { role: MembershipRole; status: MembershipStatus } | null
+  /** Opcional no tipo (embora o backend sempre envie) para não quebrar fixtures de teste
+   * existentes que ainda não simulam este campo — o código sempre lê com `?.roles ?? []`. */
+  platform?: PlatformSummary
 }

@@ -10,6 +10,7 @@ const baseValue: AuthContextValue = {
   membershipRole: null,
   membershipStatus: null,
   authenticationContext: null,
+  platformRoles: [],
   availableTenants: [],
   isAuthenticated: false,
   isTenantSelected: false,

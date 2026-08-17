@@ -68,6 +68,7 @@ function authValue(role: 'ADMIN' | 'VIEWER'): AuthContextValue {
     membershipRole: role,
     membershipStatus: 'ACTIVE',
     authenticationContext: 'TENANT_ACCESS',
+    platformRoles: [],
     availableTenants: [],
     isAuthenticated: true,
     isTenantSelected: true,

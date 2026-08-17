@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { MainLayout } from '@/layouts/MainLayout/MainLayout'
 import { LoginPage } from '@/app/pages/LoginPage/LoginPage'
+import { MembersPage } from '@/app/pages/MembersPage/MembersPage'
 import { NotFoundPage } from '@/app/pages/NotFoundPage/NotFoundPage'
 import { ProjectDashboardPage } from '@/app/pages/ProjectDashboardPage/ProjectDashboardPage'
 import { ProjectDetailPage } from '@/app/pages/ProjectDetailPage/ProjectDetailPage'
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
     children: [
       { path: ROUTES.home, element: <Navigate to={ROUTES.projects} replace /> },
       { path: ROUTES.projects, element: <ProjectsPage /> },
+      { path: ROUTES.members, element: <MembersPage /> },
       { path: '/projects/:projectId', element: <ProjectDetailPage /> },
       { path: '/projects/:projectId/cards/:cardId', element: <ProjectDetailPage /> },
       { path: '/projects/:projectId/dashboard', element: <ProjectDashboardPage /> },

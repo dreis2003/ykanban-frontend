@@ -4,6 +4,7 @@ export const ROUTES = {
   login: '/login',
   selectOrganization: '/select-organization',
   projects: '/projects',
+  members: '/settings/members',
   projectDetail: (id: string) => `/projects/${id}`,
   projectDashboard: (id: string) => `/projects/${id}/dashboard`,
   cardDetail: (projectId: string, cardId: string) => `/projects/${projectId}/cards/${cardId}`,

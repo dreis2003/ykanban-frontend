@@ -156,6 +156,21 @@ export function AuthProvider({ children }: Props) {
     [resetQueryCache],
   )
 
+  const refreshSession = useCallback(async () => {
+    const me = await authApi.me()
+    setSession({
+      user: me.user,
+      activeTenant: me.tenant,
+      membershipRole: me.membership?.role ?? null,
+      membershipStatus: me.membership?.status ?? null,
+      authenticationContext: me.context,
+    })
+    if (me.context === 'TENANT_SELECTION') {
+      await fetchAvailableTenants()
+    }
+    return me.context
+  }, [fetchAvailableTenants])
+
   const logout = useCallback(async () => {
     try {
       await authApi.logout()
@@ -181,8 +196,9 @@ export function AuthProvider({ children }: Props) {
       selectTenant,
       logout,
       refreshAvailableTenants: fetchAvailableTenants,
+      refreshSession,
     }),
-    [session, availableTenants, status, login, selectTenant, logout, fetchAvailableTenants],
+    [session, availableTenants, status, login, selectTenant, logout, fetchAvailableTenants, refreshSession],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

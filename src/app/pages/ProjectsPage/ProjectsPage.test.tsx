@@ -76,6 +76,7 @@ function authValue(role: 'ADMIN' | 'VIEWER'): AuthContextValue {
     selectTenant: async () => undefined,
     logout: async () => undefined,
     refreshAvailableTenants: async () => undefined,
+    refreshSession: async () => 'TENANT_ACCESS',
   }
 }
 

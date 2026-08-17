@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/app/router/routes'
 import { useAuth } from '@/features/auth/AuthContext'
 import type { MembershipRole } from '@/features/auth/types'
@@ -38,6 +38,17 @@ export function MainLayout() {
             <span className={styles.brandSub}>{activeTenant?.name ?? 'Yakuza Studio'}</span>
           </div>
         </div>
+
+        {membershipRole === 'ADMIN' ? (
+          <nav className={styles.nav}>
+            <NavLink
+              to={ROUTES.members}
+              className={({ isActive }) => (isActive ? styles.navLinkActive : styles.navLink)}
+            >
+              Membros
+            </NavLink>
+          </nav>
+        ) : null}
 
         {user ? (
           <div className={styles.session}>

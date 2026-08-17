@@ -59,6 +59,34 @@
   color: var(--color-text-muted);
 }
 
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.navLink,
+.navLinkActive {
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.navLink {
+  color: var(--color-text-muted);
+}
+
+.navLink:hover {
+  color: var(--color-text);
+}
+
+.navLinkActive {
+  color: var(--color-accent);
+  background-color: var(--color-bg-sunken);
+}
+
 .session {
   display: flex;
   align-items: center;

@@ -3,9 +3,11 @@ import type {
   AuthenticationContext,
   AuthUser,
   AvailableTenant,
+  LoginResponse,
   MembershipRole,
   MembershipStatus,
   Tenant,
+  TenantSelectionResponse,
 } from '@/features/auth/types'
 
 export interface AuthContextValue {
@@ -28,6 +30,12 @@ export interface AuthContextValue {
    * reflete na UI depois desta chamada. Retorna o `context` resultante para o chamador decidir se
    * precisa redirecionar (ex.: `TENANT_SELECTION` após o usuário remover/desativar a si mesmo). */
   refreshSession: () => Promise<AuthenticationContext>
+  /** Aplica a sessão retornada por `POST /public/invitations/{token}/register` (ver ADR 0022) —
+   * a chamada à API é feita pela feature de convites; este método só assume o resultado. */
+  completeInvitationRegistration: (result: LoginResponse) => Promise<void>
+  /** Aplica a sessão retornada por `POST /invitations/{token}/accept` (ver ADR 0022) — mesma
+   * observação de `completeInvitationRegistration`. */
+  completeInvitationAcceptance: (result: TenantSelectionResponse) => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

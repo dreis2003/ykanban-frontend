@@ -6,9 +6,11 @@ import type {
   AuthenticationContext,
   AuthUser,
   AvailableTenant,
+  LoginResponse,
   MembershipRole,
   MembershipStatus,
   Tenant,
+  TenantSelectionResponse,
 } from '@/features/auth/types'
 import { authSession } from '@/shared/api/authSession'
 
@@ -117,9 +119,11 @@ export function AuthProvider({ children }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- roda só na montagem, por design.
   }, [])
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      const result = await authApi.login(email, password)
+  /** Corpo comum de `login` e `completeInvitationRegistration` — as duas APIs devolvem exatamente
+   * a mesma forma (`LoginResponse`), já que registrar-se por convite também autentica na hora
+   * (ver ADR 0022, item 80). */
+  const applyLoginResponse = useCallback(
+    async (result: LoginResponse) => {
       authSession.setAccessToken(result.accessToken)
       setSession({
         user: result.user,
@@ -139,9 +143,30 @@ export function AuthProvider({ children }: Props) {
     [fetchAvailableTenants, resetQueryCache],
   )
 
-  const selectTenant = useCallback(
-    async (tenantId: string) => {
-      const result = await authApi.selectTenant(tenantId)
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const result = await authApi.login(email, password)
+      await applyLoginResponse(result)
+    },
+    [applyLoginResponse],
+  )
+
+  /** Usado pela tela pública de convite após `POST /public/invitations/{token}/register` (ver
+   * ADR 0022) — a chamada à API fica na feature de convites, não aqui (evita acoplar
+   * `features/auth` a `features/invitations`); este método só aplica o resultado já obtido. */
+  const completeInvitationRegistration = useCallback(
+    async (result: LoginResponse) => {
+      await applyLoginResponse(result)
+    },
+    [applyLoginResponse],
+  )
+
+  /** Corpo comum de `selectTenant` e `completeInvitationAcceptance` — ambos tornam um Tenant
+   * ativo via a mesma forma de resposta (`TenantSelectionResponse`); aceitar um convite com uma
+   * conta já existente reaproveita exatamente o mecanismo de troca de Tenant (ver ADR 0022, item
+   * 81 — o backend também reaproveita `TenantSelectionService#selectTenant`). */
+  const applyTenantSelectionResponse = useCallback(
+    async (result: TenantSelectionResponse) => {
       authSession.setAccessToken(result.accessToken)
       setSession((previous) => ({
         ...previous,
@@ -154,6 +179,24 @@ export function AuthProvider({ children }: Props) {
       await resetQueryCache()
     },
     [resetQueryCache],
+  )
+
+  const selectTenant = useCallback(
+    async (tenantId: string) => {
+      const result = await authApi.selectTenant(tenantId)
+      await applyTenantSelectionResponse(result)
+    },
+    [applyTenantSelectionResponse],
+  )
+
+  /** Usado pela tela pública de convite após `POST /invitations/{token}/accept` (usuário já
+   * autenticado, ver ADR 0022) — mesma justificativa de `completeInvitationRegistration`: a
+   * chamada à API fica na feature de convites. */
+  const completeInvitationAcceptance = useCallback(
+    async (result: TenantSelectionResponse) => {
+      await applyTenantSelectionResponse(result)
+    },
+    [applyTenantSelectionResponse],
   )
 
   const refreshSession = useCallback(async () => {
@@ -197,8 +240,21 @@ export function AuthProvider({ children }: Props) {
       logout,
       refreshAvailableTenants: fetchAvailableTenants,
       refreshSession,
+      completeInvitationRegistration,
+      completeInvitationAcceptance,
     }),
-    [session, availableTenants, status, login, selectTenant, logout, fetchAvailableTenants, refreshSession],
+    [
+      session,
+      availableTenants,
+      status,
+      login,
+      selectTenant,
+      logout,
+      fetchAvailableTenants,
+      refreshSession,
+      completeInvitationRegistration,
+      completeInvitationAcceptance,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

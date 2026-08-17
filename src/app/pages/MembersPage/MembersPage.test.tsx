@@ -78,6 +78,8 @@ function authValue(overrides: Partial<AuthContextValue> = {}): AuthContextValue 
     logout: async () => undefined,
     refreshAvailableTenants: async () => undefined,
     refreshSession: async () => 'TENANT_ACCESS',
+    completeInvitationRegistration: async () => undefined,
+    completeInvitationAcceptance: async () => undefined,
     ...overrides,
   }
 }
@@ -252,5 +254,127 @@ describe('MembersPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Remover' }))
 
     await waitFor(() => expect(refreshSession).toHaveBeenCalled())
+  })
+
+  it('convida um usuário com sucesso e mostra o aviso de envio', async () => {
+    const user = userEvent.setup()
+    mockFetchRouter([
+      { match: (url, method) => method === 'GET' && url.includes('/members?'), respond: () => jsonResponse(pageOf([ADMIN_MEMBER])) },
+      {
+        match: (url, method) => method === 'POST' && url.endsWith('/members/invitations'),
+        respond: () =>
+          jsonResponse(
+            {
+              invitation: {
+                id: 'inv1',
+                email: 'maria@ykanban.dev',
+                role: 'DEVELOPER',
+                status: 'PENDING',
+                invitedBy: { id: 'u1', name: 'Ana Admin' },
+                createdAt: '2026-03-01T00:00:00Z',
+                expiresAt: '2026-03-04T00:00:00Z',
+                lastEmailSentAt: '2026-03-01T00:00:01Z',
+              },
+              emailDelivered: true,
+            },
+            201,
+          ),
+      },
+    ])
+
+    renderMembersPage()
+    await waitFor(() => expect(screen.getByText('Ana Admin')).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'Convidar usuário' }))
+    const dialog = screen.getByRole('dialog')
+    await user.type(within(dialog).getByLabelText('E-mail'), 'maria@ykanban.dev')
+    await user.click(within(dialog).getByRole('radio', { name: /Desenvolvedor/ }))
+    await user.click(within(dialog).getByRole('button', { name: 'Enviar convite' }))
+
+    expect(await screen.findByText('Convite enviado para maria@ykanban.dev.')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('mostra a lista de convites na tab Convites, com reenvio e revogação', async () => {
+    const user = userEvent.setup()
+    let resent = false
+    const invitation = {
+      id: 'inv1',
+      email: 'pendente@ykanban.dev',
+      role: 'VIEWER',
+      status: 'PENDING',
+      invitedBy: { id: 'u1', name: 'Ana Admin' },
+      createdAt: '2026-03-01T00:00:00Z',
+      expiresAt: '2026-03-04T00:00:00Z',
+      lastEmailSentAt: '2026-03-01T00:00:01Z',
+    }
+    mockFetchRouter([
+      { match: (url, method) => method === 'GET' && url.includes('/members?'), respond: () => jsonResponse(pageOf([ADMIN_MEMBER])) },
+      {
+        match: (url, method) => method === 'GET' && url.includes('/members/invitations?'),
+        respond: () => jsonResponse(pageOf(resent ? [] : [invitation])),
+      },
+      {
+        match: (url, method) => method === 'POST' && url.includes('/members/invitations/inv1/resend'),
+        respond: () => {
+          resent = true
+          return jsonResponse({ invitation: { ...invitation, id: 'inv2' }, emailDelivered: true })
+        },
+      },
+      {
+        match: (url, method) => method === 'POST' && url.includes('/members/invitations/inv1/revoke'),
+        respond: () => jsonResponse({ ...invitation, status: 'REVOKED' }),
+      },
+    ])
+
+    renderMembersPage()
+    await waitFor(() => expect(screen.getByText('Ana Admin')).toBeInTheDocument())
+
+    await user.click(screen.getByRole('tab', { name: 'Convites' }))
+    expect(await screen.findByText('pendente@ykanban.dev')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Reenviar' }))
+    await waitFor(() => expect(screen.queryByText('pendente@ykanban.dev')).not.toBeInTheDocument())
+  })
+
+  it('revoga um convite após confirmação', async () => {
+    const user = userEvent.setup()
+    let revoked = false
+    const invitation = {
+      id: 'inv1',
+      email: 'revogar@ykanban.dev',
+      role: 'VIEWER',
+      status: 'PENDING',
+      invitedBy: { id: 'u1', name: 'Ana Admin' },
+      createdAt: '2026-03-01T00:00:00Z',
+      expiresAt: '2026-03-04T00:00:00Z',
+      lastEmailSentAt: null,
+    }
+    mockFetchRouter([
+      { match: (url, method) => method === 'GET' && url.includes('/members?'), respond: () => jsonResponse(pageOf([ADMIN_MEMBER])) },
+      {
+        match: (url, method) => method === 'GET' && url.includes('/members/invitations?'),
+        respond: () => jsonResponse(pageOf(revoked ? [] : [invitation])),
+      },
+      {
+        match: (url, method) => method === 'POST' && url.includes('/members/invitations/inv1/revoke'),
+        respond: () => {
+          revoked = true
+          return jsonResponse({ ...invitation, status: 'REVOKED' })
+        },
+      },
+    ])
+
+    renderMembersPage()
+    await waitFor(() => expect(screen.getByText('Ana Admin')).toBeInTheDocument())
+
+    await user.click(screen.getByRole('tab', { name: 'Convites' }))
+    expect(await screen.findByText('revogar@ykanban.dev')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Revogar' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Revogar' }))
+
+    await waitFor(() => expect(screen.queryByText('revogar@ykanban.dev')).not.toBeInTheDocument())
   })
 })

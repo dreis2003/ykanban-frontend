@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { MainLayout } from '@/layouts/MainLayout/MainLayout'
+import { AcceptInvitationPage } from '@/app/pages/AcceptInvitationPage/AcceptInvitationPage'
 import { LoginPage } from '@/app/pages/LoginPage/LoginPage'
 import { MembersPage } from '@/app/pages/MembersPage/MembersPage'
 import { NotFoundPage } from '@/app/pages/NotFoundPage/NotFoundPage'
@@ -12,12 +13,15 @@ import { RequireAuthenticated } from '@/features/auth/RequireAuthenticated'
 import { ROUTES } from '@/app/router/routes'
 
 /**
- * `/login` é a única rota totalmente pública. `/select-organization` exige identidade mas
- * dispensa Tenant ativo (é onde ele é resolvido — ver ADR 0020); as demais exigem os dois via
- * {@code RequireAuth}. `/projects` é o destino pós-seleção — `/` apenas redireciona para lá.
+ * `/login` e `/invitations/:token` são as únicas rotas totalmente públicas (ver ADR 0022 para a
+ * segunda — precisa funcionar para quem ainda nem tem conta). `/select-organization` exige
+ * identidade mas dispensa Tenant ativo (é onde ele é resolvido — ver ADR 0020); as demais exigem
+ * os dois via {@code RequireAuth}. `/projects` é o destino pós-seleção — `/` apenas redireciona
+ * para lá.
  */
 export const router = createBrowserRouter([
   { path: ROUTES.login, element: <LoginPage /> },
+  { path: '/invitations/:token', element: <AcceptInvitationPage /> },
   {
     path: ROUTES.selectOrganization,
     element: (

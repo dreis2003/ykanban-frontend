@@ -77,6 +77,8 @@ function authValue(role: 'ADMIN' | 'VIEWER'): AuthContextValue {
     logout: async () => undefined,
     refreshAvailableTenants: async () => undefined,
     refreshSession: async () => 'TENANT_ACCESS',
+    completeInvitationRegistration: async () => undefined,
+    completeInvitationAcceptance: async () => undefined,
   }
 }
 

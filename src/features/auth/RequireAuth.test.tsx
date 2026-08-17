@@ -19,6 +19,8 @@ const baseValue: AuthContextValue = {
   logout: async () => undefined,
   refreshAvailableTenants: async () => undefined,
   refreshSession: async () => 'TENANT_SELECTION',
+  completeInvitationRegistration: async () => undefined,
+  completeInvitationAcceptance: async () => undefined,
 }
 
 function renderWithAuth(value: AuthContextValue) {

@@ -34,7 +34,7 @@ function wasEdited(comment: Comment): boolean {
  * naturalmente perto do composer, sem exigir scroll manual.
  */
 export function CardCommentsSection({ cardId, canManage }: Props) {
-  const { user } = useAuth()
+  const { user, membershipRole } = useAuth()
   const queryClient = useQueryClient()
   const queryKey = ['card', cardId, 'comments'] as const
   const [newContent, setNewContent] = useState('')
@@ -162,7 +162,7 @@ export function CardCommentsSection({ cardId, canManage }: Props) {
           {comments.map((comment) => {
             const isOwn = user?.id === comment.author.id
             const canEdit = canManage && isOwn && !comment.deleted
-            const canDelete = canManage && !comment.deleted && (isOwn || user?.role === 'ADMIN')
+            const canDelete = canManage && !comment.deleted && (isOwn || membershipRole === 'ADMIN')
             const isEditingThis = editingId === comment.id
 
             return (

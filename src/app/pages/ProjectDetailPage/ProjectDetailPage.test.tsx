@@ -141,11 +141,19 @@ const CARDS_BY_ID: Record<string, unknown> = { card1: CARD_BACKLOG_1, card2: CAR
 
 function authValue(role: 'ADMIN' | 'DEVELOPER' | 'VIEWER'): AuthContextValue {
   return {
-    user: { id: 'u1', name: 'Ana', email: 'ana@ykanban.dev', role },
+    user: { id: 'u1', name: 'Ana', email: 'ana@ykanban.dev' },
+    activeTenant: { id: 't1', name: 'Yakuza Studio', slug: 'yakuza-studio', status: 'ACTIVE' },
+    membershipRole: role,
+    membershipStatus: 'ACTIVE',
+    authenticationContext: 'TENANT_ACCESS',
+    availableTenants: [],
     isAuthenticated: true,
+    isTenantSelected: true,
     isLoading: false,
     login: async () => undefined,
+    selectTenant: async () => undefined,
     logout: async () => undefined,
+    refreshAvailableTenants: async () => undefined,
   }
 }
 
@@ -1016,7 +1024,7 @@ describe('ProjectDetailPage', () => {
 
   describe('Responsável', () => {
     function userOf(id: string, name: string, email: string, status: 'ACTIVE' | 'INACTIVE' = 'ACTIVE') {
-      return { id, name, email, status, role: 'DEVELOPER' }
+      return { id, name, email, status }
     }
 
     function usersPage(users: ReturnType<typeof userOf>[]) {

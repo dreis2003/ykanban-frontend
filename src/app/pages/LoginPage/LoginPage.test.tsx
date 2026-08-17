@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { LoginPage } from '@/app/pages/LoginPage/LoginPage'
 import { AuthProvider } from '@/features/auth/AuthProvider'
 import { authSession } from '@/shared/api/authSession'
 
-const AUTH_USER = { id: 'u1', name: 'Ana', email: 'ana@ykanban.dev', role: 'DEVELOPER' }
+const AUTH_USER = { id: 'u1', name: 'Ana', email: 'ana@ykanban.dev' }
+const TENANT = { id: 't1', name: 'Yakuza Studio', slug: 'yakuza-studio', status: 'ACTIVE' }
 
 function jsonResponse(body: unknown, status = 200): Response {
   return {
@@ -18,15 +20,18 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 function renderLoginPage() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
-    <AuthProvider>
-      <MemoryRouter initialEntries={['/login']}>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/" element={<p>página inicial</p>} />
-        </Routes>
-      </MemoryRouter>
-    </AuthProvider>,
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/login']}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/" element={<p>página inicial</p>} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    </QueryClientProvider>,
   )
 }
 
@@ -56,7 +61,7 @@ describe('LoginPage', () => {
           return Promise.resolve(jsonResponse({ title: 'x', status: 401 }, 401))
         }
         if (url.includes('/auth/login')) {
-          return Promise.resolve(jsonResponse({ accessToken: 't', expiresIn: 900, user: AUTH_USER }))
+          return Promise.resolve(jsonResponse({ accessToken: 't', expiresIn: 900, user: AUTH_USER, context: 'TENANT_ACCESS', tenant: TENANT, membershipRole: 'DEVELOPER' }))
         }
         return Promise.reject(new Error(`fetch inesperado: ${url}`))
       }),
@@ -109,7 +114,7 @@ describe('LoginPage', () => {
         }
         if (url.includes('/auth/login')) {
           return new Promise<Response>((resolve) => {
-            resolveLogin = () => resolve(jsonResponse({ accessToken: 't', expiresIn: 900, user: AUTH_USER }))
+            resolveLogin = () => resolve(jsonResponse({ accessToken: 't', expiresIn: 900, user: AUTH_USER, context: 'TENANT_ACCESS', tenant: TENANT, membershipRole: 'DEVELOPER' }))
           })
         }
         return Promise.reject(new Error(`fetch inesperado: ${url}`))

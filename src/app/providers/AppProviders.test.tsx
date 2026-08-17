@@ -3,7 +3,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { AppProviders } from '@/app/providers/AppProviders'
 import { authSession } from '@/shared/api/authSession'
 
-const AUTH_USER = { id: 'u1', name: 'Ana', email: 'ana@ykanban.dev', role: 'DEVELOPER' }
+const AUTH_USER = { id: 'u1', name: 'Ana', email: 'ana@ykanban.dev' }
+const TENANT = { id: 't1', name: 'Yakuza Studio', slug: 'yakuza-studio', status: 'ACTIVE' }
 
 function jsonResponse(body: unknown, status = 200): Response {
   return {
@@ -23,7 +24,9 @@ function mockAuthenticatedSession() {
         return Promise.resolve(jsonResponse({ accessToken: 't', expiresIn: 900 }))
       }
       if (url.includes('/auth/me')) {
-        return Promise.resolve(jsonResponse(AUTH_USER))
+        return Promise.resolve(
+          jsonResponse({ user: AUTH_USER, context: 'TENANT_ACCESS', tenant: TENANT, membership: { role: 'DEVELOPER', status: 'ACTIVE' } }),
+        )
       }
       if (url.includes('/projects/summary')) {
         return Promise.resolve(jsonResponse({ total: 0, active: 0, archived: 0 }))

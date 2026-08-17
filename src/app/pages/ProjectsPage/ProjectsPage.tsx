@@ -51,8 +51,8 @@ function errorMessageFrom(error: unknown): string {
 type FormState = { mode: 'create' } | { mode: 'edit'; project: Project }
 
 export function ProjectsPage() {
-  const { user } = useAuth()
-  const canManage = user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER'
+  const { membershipRole } = useAuth()
+  const canManage = membershipRole === 'ADMIN' || membershipRole === 'PROJECT_MANAGER'
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
 

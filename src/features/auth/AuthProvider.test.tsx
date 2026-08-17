@@ -1,11 +1,13 @@
 import { act } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/features/auth/AuthProvider'
 import { useAuth } from '@/features/auth/AuthContext'
 import { authSession } from '@/shared/api/authSession'
 
-const USER = { id: 'u1', name: 'Ana', email: 'ana@ykanban.dev', role: 'DEVELOPER' as const }
+const USER = { id: 'u1', name: 'Ana', email: 'ana@ykanban.dev' }
+const TENANT = { id: 't1', name: 'Yakuza Studio', slug: 'yakuza-studio', status: 'ACTIVE' as const }
 
 function jsonResponse(body: unknown, status = 200): Response {
   return {
@@ -14,6 +16,11 @@ function jsonResponse(body: unknown, status = 200): Response {
     headers: new Headers({ 'content-type': 'application/json' }),
     json: () => Promise.resolve(body),
   } as Response
+}
+
+function renderWithProviders(children: React.ReactNode) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>)
 }
 
 function Probe() {
@@ -45,13 +52,15 @@ describe('AuthProvider', () => {
           return Promise.resolve(jsonResponse({ accessToken: 't', expiresIn: 900 }))
         }
         if (url.includes('/auth/me')) {
-          return Promise.resolve(jsonResponse(USER))
+          return Promise.resolve(
+            jsonResponse({ user: USER, context: 'TENANT_ACCESS', tenant: TENANT, membership: { role: 'DEVELOPER', status: 'ACTIVE' } }),
+          )
         }
         return Promise.reject(new Error(`fetch inesperado: ${url}`))
       }),
     )
 
-    render(
+    renderWithProviders(
       <AuthProvider>
         <Probe />
       </AuthProvider>,
@@ -68,7 +77,7 @@ describe('AuthProvider', () => {
       vi.fn().mockResolvedValue(jsonResponse({ title: 'Sessão inválida ou expirada.', status: 401 }, 401)),
     )
 
-    render(
+    renderWithProviders(
       <AuthProvider>
         <Probe />
       </AuthProvider>,
@@ -87,13 +96,22 @@ describe('AuthProvider', () => {
           return Promise.resolve(jsonResponse({ title: 'x', status: 401 }, 401))
         }
         if (url.includes('/auth/login')) {
-          return Promise.resolve(jsonResponse({ accessToken: 't', expiresIn: 900, user: USER }))
+          return Promise.resolve(
+            jsonResponse({
+              accessToken: 't',
+              expiresIn: 900,
+              user: USER,
+              context: 'TENANT_ACCESS',
+              tenant: TENANT,
+              membershipRole: 'DEVELOPER',
+            }),
+          )
         }
         return Promise.reject(new Error(`fetch inesperado: ${url}`))
       }),
     )
 
-    render(
+    renderWithProviders(
       <AuthProvider>
         <Probe />
       </AuthProvider>,
@@ -117,7 +135,9 @@ describe('AuthProvider', () => {
           return Promise.resolve(jsonResponse({ accessToken: 't', expiresIn: 900 }))
         }
         if (url.includes('/auth/me')) {
-          return Promise.resolve(jsonResponse(USER))
+          return Promise.resolve(
+            jsonResponse({ user: USER, context: 'TENANT_ACCESS', tenant: TENANT, membership: { role: 'DEVELOPER', status: 'ACTIVE' } }),
+          )
         }
         if (url.includes('/auth/logout')) {
           return Promise.reject(new Error('rede indisponível'))
@@ -126,7 +146,7 @@ describe('AuthProvider', () => {
       }),
     )
 
-    render(
+    renderWithProviders(
       <AuthProvider>
         <Probe />
       </AuthProvider>,

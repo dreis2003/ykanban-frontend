@@ -5,15 +5,26 @@ import { NotFoundPage } from '@/app/pages/NotFoundPage/NotFoundPage'
 import { ProjectDashboardPage } from '@/app/pages/ProjectDashboardPage/ProjectDashboardPage'
 import { ProjectDetailPage } from '@/app/pages/ProjectDetailPage/ProjectDetailPage'
 import { ProjectsPage } from '@/app/pages/ProjectsPage/ProjectsPage'
+import { SelectOrganizationPage } from '@/app/pages/SelectOrganizationPage/SelectOrganizationPage'
 import { RequireAuth } from '@/features/auth/RequireAuth'
+import { RequireAuthenticated } from '@/features/auth/RequireAuthenticated'
 import { ROUTES } from '@/app/router/routes'
 
 /**
- * `/login` é a única rota pública. `/projects` é o destino pós-login (ver Prompt 04) — `/`
- * apenas redireciona para lá; não há mais uma "home" própria.
+ * `/login` é a única rota totalmente pública. `/select-organization` exige identidade mas
+ * dispensa Tenant ativo (é onde ele é resolvido — ver ADR 0020); as demais exigem os dois via
+ * {@code RequireAuth}. `/projects` é o destino pós-seleção — `/` apenas redireciona para lá.
  */
 export const router = createBrowserRouter([
   { path: ROUTES.login, element: <LoginPage /> },
+  {
+    path: ROUTES.selectOrganization,
+    element: (
+      <RequireAuthenticated>
+        <SelectOrganizationPage />
+      </RequireAuthenticated>
+    ),
+  },
   {
     element: (
       <RequireAuth>

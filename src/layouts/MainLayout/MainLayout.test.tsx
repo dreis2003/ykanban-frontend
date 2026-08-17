@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { MainLayout } from '@/layouts/MainLayout/MainLayout'
 import { AuthProvider } from '@/features/auth/AuthProvider'
@@ -21,10 +22,13 @@ describe('MainLayout', () => {
       },
     ])
 
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>,
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </QueryClientProvider>,
     )
 
     expect(screen.getByRole('banner')).toHaveTextContent('YKanban')

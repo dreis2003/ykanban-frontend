@@ -85,6 +85,22 @@
   color: var(--color-text-muted);
 }
 
+.switchOrg {
+  appearance: none;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.switchOrg:hover {
+  color: var(--color-text);
+}
+
 .logout {
   appearance: none;
   border: var(--border-width) solid var(--color-border-strong);

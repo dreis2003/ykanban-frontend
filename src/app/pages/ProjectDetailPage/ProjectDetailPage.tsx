@@ -10,11 +10,12 @@ import styles from './ProjectDetailPage.module.css'
 
 export function ProjectDetailPage() {
   const { projectId, cardId } = useParams<{ projectId: string; cardId?: string }>()
-  const { user } = useAuth()
-  const canManage = user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER'
+  const { membershipRole } = useAuth()
+  const canManage = membershipRole === 'ADMIN' || membershipRole === 'PROJECT_MANAGER'
   // Diferente da edição de coluna (ADMIN/PM), Card também pode ser criado/editado por DEVELOPER —
-  // só VIEWER é somente leitura (ver agent_docs/business-rules.md).
-  const canManageCards = user?.role !== 'VIEWER'
+  // só VIEWER é somente leitura (ver agent_docs/business-rules.md). Role é sempre a Membership do
+  // Tenant ativo — nunca User.role (ver ADR 0020).
+  const canManageCards = membershipRole !== 'VIEWER'
 
   const {
     data: project,

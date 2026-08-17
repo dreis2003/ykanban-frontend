@@ -6,10 +6,18 @@ import { AuthContext, type AuthContextValue } from '@/features/auth/AuthContext'
 
 const baseValue: AuthContextValue = {
   user: null,
+  activeTenant: null,
+  membershipRole: null,
+  membershipStatus: null,
+  authenticationContext: null,
+  availableTenants: [],
   isAuthenticated: false,
+  isTenantSelected: false,
   isLoading: false,
   login: async () => undefined,
+  selectTenant: async () => undefined,
   logout: async () => undefined,
+  refreshAvailableTenants: async () => undefined,
 }
 
 function renderWithAuth(value: AuthContextValue) {
@@ -18,6 +26,7 @@ function renderWithAuth(value: AuthContextValue) {
       <MemoryRouter initialEntries={['/protegida']}>
         <Routes>
           <Route path="/login" element={<p>tela de login</p>} />
+          <Route path="/select-organization" element={<p>seleção de organização</p>} />
           <Route
             path="/protegida"
             element={
@@ -45,8 +54,14 @@ describe('RequireAuth', () => {
     expect(screen.getByText('tela de login')).toBeInTheDocument()
   })
 
-  it('renderiza o conteúdo protegido quando autenticado', () => {
-    renderWithAuth({ ...baseValue, isAuthenticated: true })
+  it('redireciona para seleção de organização quando autenticado sem Tenant ativo', () => {
+    renderWithAuth({ ...baseValue, isAuthenticated: true, isTenantSelected: false })
+
+    expect(screen.getByText('seleção de organização')).toBeInTheDocument()
+  })
+
+  it('renderiza o conteúdo protegido quando autenticado com Tenant ativo', () => {
+    renderWithAuth({ ...baseValue, isAuthenticated: true, isTenantSelected: true })
 
     expect(screen.getByText('conteúdo protegido')).toBeInTheDocument()
   })

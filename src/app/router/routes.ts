@@ -2,6 +2,7 @@
 export const ROUTES = {
   home: '/',
   login: '/login',
+  selectOrganization: '/select-organization',
   projects: '/projects',
   projectDetail: (id: string) => `/projects/${id}`,
   projectDashboard: (id: string) => `/projects/${id}/dashboard`,

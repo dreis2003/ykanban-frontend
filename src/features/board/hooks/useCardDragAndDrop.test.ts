@@ -9,8 +9,8 @@ const BOARD: Board = {
   projectId: 'project-1',
   name: 'Kanban',
   columns: [
-    { id: 'col-backlog', type: 'BACKLOG', name: 'Backlog', position: 1, wipLimit: null },
-    { id: 'col-doing', type: 'DOING', name: 'Em Desenvolvimento', position: 2, wipLimit: null },
+    { id: 'col-backlog', type: 'BACKLOG', name: 'Backlog', position: 1, wipLimit: null, cardCount: 0 },
+    { id: 'col-doing', type: 'DOING', name: 'Em Desenvolvimento', position: 2, wipLimit: null, cardCount: 0 },
   ],
 }
 

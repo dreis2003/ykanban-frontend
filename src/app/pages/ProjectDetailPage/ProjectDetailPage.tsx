@@ -4,7 +4,7 @@ import { ROUTES } from '@/app/router/routes'
 import { ProjectBoard } from '@/features/board/components/ProjectBoard/ProjectBoard'
 import { useAuth } from '@/features/auth/AuthContext'
 import { projectsApi } from '@/features/projects/api/projectsApi'
-import { StatusBadge } from '@/shared/components/StatusBadge/StatusBadge'
+import { ProjectPageHeader } from '@/features/projects/components/ProjectPageHeader/ProjectPageHeader'
 import { StatusMessage } from '@/shared/components/StatusMessage/StatusMessage'
 import styles from './ProjectDetailPage.module.css'
 
@@ -44,17 +44,7 @@ export function ProjectDetailPage() {
 
       {!isLoading && !isError && project ? (
         <>
-          <header className={styles.header}>
-            <span className={styles.code}>{project.code}</span>
-            <h1 className={styles.title}>{project.name}</h1>
-            <StatusBadge status={project.status} />
-          </header>
-
-          {project.status === 'ARCHIVED' ? (
-            <p className={styles.archivedNotice} role="status">
-              Este projeto está arquivado e está em modo somente leitura.
-            </p>
-          ) : null}
+          <ProjectPageHeader project={project} active="kanban" />
 
           <ProjectBoard
             projectId={project.id}

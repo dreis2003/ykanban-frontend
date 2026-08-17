@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { DndContext, DragOverlay } from '@dnd-kit/core'
 import { Plus } from 'lucide-react'
@@ -52,6 +52,15 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
   const canEditColumns = canManage && !isReadOnly
   const canEditCards = canManageCards && !isReadOnly
   const { criteria, hasActiveFilters } = useBoardFilters()
+  const boardScrollRef = useRef<HTMLDivElement>(null)
+
+  // A barra de rolagem horizontal do board fica sempre oculta (ver ProjectBoard.module.css) — os
+  // botões de seta no toolbar são a forma visível de navegar lateralmente. Um "passo" é
+  // aproximadamente a largura de uma coluna + o espaçamento entre elas.
+  const SCROLL_STEP_PX = 320
+  function scrollBoard(direction: 'left' | 'right') {
+    boardScrollRef.current?.scrollBy({ left: direction === 'left' ? -SCROLL_STEP_PX : SCROLL_STEP_PX, behavior: 'smooth' })
+  }
 
   const {
     data: board,
@@ -101,13 +110,20 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
       queryClient.setQueryData(['board', projectId], updatedBoard)
       setEditingColumn(null)
       setColumnFormError(null)
+      // WIP muda a seção "Saúde do Fluxo" do Dashboard (ver ADR 0018).
+      queryClient.invalidateQueries({ queryKey: ['projectMetrics', 'current', projectId] })
     },
     onError: (error: unknown) => setColumnFormError(errorMessageFrom(error)),
   })
 
   function invalidateCards() {
     // Prefixo (sem `criteria`) invalida todas as variações de filtro em cache, não só a atual.
-    return queryClient.invalidateQueries({ queryKey: ['cards', projectId] })
+    queryClient.invalidateQueries({ queryKey: ['cards', projectId] })
+    // Criar/mover/editar Card muda tanto o estado atual (contagens/WIP) quanto o fluxo histórico
+    // (throughput/lead/cycle time) do Dashboard — ver ADR 0018. Barato invalidar mesmo que o
+    // Dashboard não esteja aberto (TanStack Query só refaz o fetch de queries montadas).
+    queryClient.invalidateQueries({ queryKey: ['projectMetrics', 'current', projectId] })
+    return queryClient.invalidateQueries({ queryKey: ['projectMetrics', 'flow', projectId] })
   }
 
   const createCardMutation = useMutation({
@@ -183,9 +199,11 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
     if (!targetColumn || targetColumn.wipLimit == null) {
       return null
     }
-    const currentCount = cardsByColumnId.get(dnd.overColumnId)?.length ?? 0
-    return currentCount >= targetColumn.wipLimit ? dnd.overColumnId : null
-  }, [dnd.overColumnId, dnd.activeCard, board, cardsByColumnId])
+    // Contagem real do Board (nunca a lista filtrada — ver ADR 0017), mas isso já é indiferente
+    // aqui: qualquer filtro/pesquisa ativo desabilita o drag inteiro (dragDisabled), então esta
+    // função nunca roda com `dnd.overColumnId` definido nesse cenário.
+    return targetColumn.cardCount >= targetColumn.wipLimit ? dnd.overColumnId : null
+  }, [dnd.overColumnId, dnd.activeCard, board])
 
   // Aviso durante o arrasto quando um Card bloqueado é solto numa coluna posterior no fluxo — só
   // um aviso (mesmo padrão do WIP acima): o backend continua sendo a autoridade, rejeitando com
@@ -237,7 +255,7 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
         ) : null}
       </div>
 
-      <KanbanFilters projectId={projectId} />
+      <KanbanFilters projectId={projectId} onScrollLeft={() => scrollBoard('left')} onScrollRight={() => scrollBoard('right')} />
 
       {isBoardLoading ? (
         <div className={styles.board} aria-hidden="true">
@@ -292,7 +310,7 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
             onDragEnd={dnd.handleDragEnd}
             onDragCancel={dnd.handleDragCancel}
           >
-            <div className={styles.board} role="list" aria-label="Colunas do Kanban">
+            <div ref={boardScrollRef} className={styles.board} role="list" aria-label="Colunas do Kanban">
               {board.columns.map((column) => (
                 <div role="listitem" key={column.id} data-column-id={column.id}>
                   <BoardColumn
@@ -307,6 +325,7 @@ export function ProjectBoard({ projectId, openCardId, canManage, canManageCards,
                     wipBlocked={wipBlockedColumnId === column.id}
                     cardBlockedFromAdvancing={blockedMoveColumnId === column.id}
                     emptyStateMessage={hasActiveFilters ? 'Nenhum card encontrado com os filtros atuais' : 'Nenhum card'}
+                    hasActiveFilters={hasActiveFilters}
                   />
                 </div>
               ))}

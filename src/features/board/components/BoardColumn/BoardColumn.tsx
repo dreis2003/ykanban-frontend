@@ -1,8 +1,9 @@
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { Pencil, Plus } from 'lucide-react'
+import { AlertTriangle, Pencil, Plus } from 'lucide-react'
 import { columnDroppableId } from '@/features/board/hooks/useCardDragAndDrop'
 import type { KanbanColumn } from '@/features/board/types'
+import { resolveWipStatus } from '@/features/board/utils/wipStatus'
 import type { Card } from '@/features/card/types'
 import { SortableKanbanCard } from './SortableKanbanCard'
 import styles from './BoardColumn.module.css'
@@ -22,6 +23,9 @@ interface Props {
    * padrão já usado para `wipBlocked`. */
   cardBlockedFromAdvancing: boolean
   emptyStateMessage: string
+  /** Ver ADR 0017 — com filtro/pesquisa ativo, `cards` (exibidos) pode ser menor que
+   * `column.cardCount` (real); o WIP sempre usa o real, nunca a visão filtrada. */
+  hasActiveFilters: boolean
 }
 
 export function BoardColumn({
@@ -36,10 +40,11 @@ export function BoardColumn({
   wipBlocked,
   cardBlockedFromAdvancing,
   emptyStateMessage,
+  hasActiveFilters,
 }: Props) {
   // position ASC é a ordem de exibição — nunca confiar na ordem de retorno da API por si só.
   const orderedCards = [...cards].sort((a, b) => a.position - b.position)
-  const atWipLimit = column.wipLimit != null && cards.length >= column.wipLimit
+  const wipStatus = resolveWipStatus(column.wipLimit, column.cardCount)
   const { setNodeRef, isOver } = useDroppable({ id: columnDroppableId(column.id), disabled: dragDisabled })
 
   return (
@@ -51,9 +56,26 @@ export function BoardColumn({
             <span className={styles.count}>{cards.length}</span>
           </div>
           {column.wipLimit != null ? (
-            <span className={styles.wipLimit} data-at-limit={atWipLimit}>
-              {cards.length} / {column.wipLimit}
-            </span>
+            <div
+              className={styles.wipLimit}
+              data-wip-status={wipStatus}
+              title={
+                wipStatus === 'OVER_LIMIT'
+                  ? `${column.cardCount - column.wipLimit} cards acima do limite de WIP`
+                  : undefined
+              }
+            >
+              <span className={styles.wipCount}>
+                {hasActiveFilters && cards.length !== column.cardCount ? `${cards.length} visível · ` : ''}
+                {column.cardCount} / {column.wipLimit}
+              </span>
+              {wipStatus === 'AT_LIMIT' ? <span className={styles.wipStatusText}>Limite atingido</span> : null}
+              {wipStatus === 'OVER_LIMIT' ? (
+                <span className={styles.wipStatusText}>
+                  <AlertTriangle size={12} aria-hidden="true" /> Acima do limite
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </div>
         {canManage ? (

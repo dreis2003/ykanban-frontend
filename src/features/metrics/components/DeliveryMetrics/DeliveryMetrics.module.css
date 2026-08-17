@@ -1,0 +1,84 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-4);
+}
+
+.throughputCard,
+.durationCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg-elevated);
+}
+
+.durationTitle {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.throughputValue {
+  font-size: var(--font-size-xl, 1.75rem);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-mono);
+}
+
+.throughputDescription {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.throughputDescription [data-trend='up'] {
+  color: var(--color-success, var(--color-accent));
+}
+
+.throughputDescription [data-trend='down'] {
+  color: var(--color-danger);
+}
+
+.durationStats {
+  display: flex;
+  gap: var(--space-5);
+  margin: 0;
+}
+
+.durationStats dt {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.durationStats dd {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-mono);
+}
+
+.sampleSize {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.insufficientData {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-bg-elevated);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  box-shadow: var(--shadow-md, 0 4px 12px rgb(0 0 0 / 0.15));
+}

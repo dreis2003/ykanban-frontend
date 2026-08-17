@@ -1,10 +1,11 @@
+/* Sem `flex: 1`/`min-height: 0` de propósito — deixaria o board inteiro espremido para caber na
+ * altura da viewport. Altura sempre automática; a página (`.main` do MainLayout) rola por inteiro
+ * quando o conteúdo é mais alto que a tela (ver ProjectBoard.module.css `.board`). */
 .page {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   width: 100%;
-  flex: 1;
-  min-height: 0;
 }
 
 .breadcrumb {
@@ -28,31 +29,4 @@
 .breadcrumbCurrent {
   color: var(--color-text);
   font-weight: var(--font-weight-medium);
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
-.code {
-  font-family: var(--font-mono);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted);
-}
-
-.title {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-}
-
-.archivedNotice {
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
-  background-color: var(--color-warning-bg);
-  color: var(--color-warning);
-  font-size: var(--font-size-sm);
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useBoardFilters } from '@/features/board/hooks/useBoardFilters'
 import type { CardPriority, CardType } from '@/features/card/types'
 import { labelApi } from '@/features/label/api/labelApi'
@@ -10,6 +10,10 @@ import styles from './KanbanFilters.module.css'
 
 interface Props {
   projectId: string
+  /** A barra de rolagem horizontal do board fica sempre oculta (ver ProjectBoard.module.css) —
+   * estes botões são a forma visível de rolar a fileira de colunas lateralmente. */
+  onScrollLeft: () => void
+  onScrollRight: () => void
 }
 
 const TYPE_LABELS: Record<CardType, string> = {
@@ -40,7 +44,7 @@ function toggle<T>(list: T[], value: T): T[] {
  * filtro em estado local (exceto o texto de busca, para o debounce não disparar navegação a cada
  * tecla).
  */
-export function KanbanFilters({ projectId }: Props) {
+export function KanbanFilters({ projectId, onScrollLeft, onScrollRight }: Props) {
   const { state, hasActiveFilters, update, clearAll } = useBoardFilters()
   const [searchInput, setSearchInput] = useState(state.search)
   // Sincroniza o input local quando a URL muda por fora (voltar/avançar do navegador, "Limpar
@@ -215,6 +219,15 @@ export function KanbanFilters({ projectId }: Props) {
             </label>
           </div>
         </details>
+
+        <div className={styles.scrollButtons}>
+          <button type="button" className={styles.scrollButton} onClick={onScrollLeft} aria-label="Rolar colunas para a esquerda">
+            <ChevronLeft size={16} aria-hidden="true" />
+          </button>
+          <button type="button" className={styles.scrollButton} onClick={onScrollRight} aria-label="Rolar colunas para a direita">
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
+        </div>
 
         {hasActiveFilters ? (
           <button

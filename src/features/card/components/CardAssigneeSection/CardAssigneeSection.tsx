@@ -72,7 +72,9 @@ export function CardAssigneeSection({ cardId, projectId, assignee, canManage }: 
   }
 
   function invalidateCardsList() {
-    return queryClient.invalidateQueries({ queryKey: ['cards', projectId] })
+    queryClient.invalidateQueries({ queryKey: ['cards', projectId] })
+    // Atribuição muda `unassignedCards`/"Por Responsável" do Dashboard (ver ADR 0018).
+    return queryClient.invalidateQueries({ queryKey: ['projectMetrics', 'current', projectId] })
   }
 
   const assignMutation = useMutation({

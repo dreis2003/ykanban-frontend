@@ -90,6 +90,30 @@
   background-color: var(--color-bg-sunken);
 }
 
+.scrollButtons {
+  display: flex;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.scrollButton {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text);
+  padding: var(--space-2);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.scrollButton:hover {
+  border-color: var(--color-accent);
+}
+
 .clearButton {
   appearance: none;
   border: none;

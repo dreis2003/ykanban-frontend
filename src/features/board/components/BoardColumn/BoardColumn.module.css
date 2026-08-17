@@ -3,7 +3,8 @@
   flex-direction: column;
   flex: 0 0 18rem;
   min-width: 18rem;
-  height: 100%;
+  /* Sem altura própria de propósito — cresce para caber todos os Cards, sem scroll interno (a
+   * página inteira rola, ver ProjectBoard.module.css). */
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-lg);
   background-color: var(--color-bg-elevated);
@@ -49,14 +50,38 @@
 }
 
 .wipLimit {
-  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
 }
 
-.wipLimit[data-at-limit='true'] {
-  color: var(--color-warning);
+.wipCount {
+  font-family: var(--font-mono);
+}
+
+.wipStatusText {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
   font-weight: var(--font-weight-medium);
+}
+
+.wipLimit[data-wip-status='AT_LIMIT'] {
+  color: var(--color-warning);
+}
+
+.wipLimit[data-wip-status='AT_LIMIT'] .wipStatusText {
+  color: var(--color-warning);
+}
+
+.wipLimit[data-wip-status='OVER_LIMIT'] {
+  color: var(--color-danger);
+}
+
+.wipLimit[data-wip-status='OVER_LIMIT'] .wipStatusText {
+  color: var(--color-danger);
 }
 
 .editButton {
@@ -99,8 +124,8 @@
 
 .body {
   flex: 1;
+  /* Sem scroll próprio de propósito — a coluna cresce livremente e é a página (.main) que rola. */
   padding: var(--space-3);
-  overflow-y: auto;
   border: var(--border-width) dashed transparent;
   border-radius: var(--radius-md);
   transition: border-color var(--transition-fast), background-color var(--transition-fast);

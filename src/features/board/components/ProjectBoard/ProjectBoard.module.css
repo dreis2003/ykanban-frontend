@@ -1,7 +1,8 @@
+/* Sem `flex: 1`/`min-height: 0` de propósito — isso forçava este container (e o `.board` dentro
+ * dele) a serem espremidos para caber na altura da viewport, contradizendo o crescimento livre das
+ * colunas (ver `.board` abaixo). Altura sempre automática, do tamanho do conteúdo. */
 .wrapper {
   width: 100%;
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -75,24 +76,49 @@
   background-color: var(--color-bg-sunken);
 }
 
+/**
+ * Sem altura própria de propósito (nunca `flex: 1`/`min-height: 0` aqui) — as colunas devem
+ * crescer livremente para caber todos os Cards (nenhum Card fica oculto/cortado), e é a página
+ * inteira (`.main` do MainLayout, que já tem `overflow-y: auto`) que rola verticalmente, nunca
+ * cada coluna internamente.
+ *
+ * `align-items: stretch` (em vez de `flex-start`): todas as colunas ficam com a mesma altura —
+ * a da maior — para uma visualização homogênea, mesmo quando têm quantidades bem diferentes de
+ * Cards (colunas menores só ganham espaço vazio extra no fim, nunca cortam conteúdo).
+ *
+ * Uma única linha (`flex-wrap` nunca ligado) + `overflow-x: auto`: as colunas ficam sempre lado a
+ * lado, na largura fixa de cada uma (nunca encolhem/quebram linha para caber na viewport) — quando
+ * não cabem todas na largura disponível, a fileira ganha rolagem horizontal própria. Definir
+ * `overflow-x` sem `overflow-y` força este último a computar como `auto` também (regra do CSS) —
+ * inofensivo aqui porque `.board` não tem altura própria (auto, do tamanho do conteúdo): nunca há
+ * conteúdo "maior que a própria caixa" para essa rolagem vertical implícita disparar.
+ */
 .board {
-  flex: 1;
-  min-height: 0;
   display: flex;
   align-items: stretch;
   gap: var(--space-4);
   overflow-x: auto;
   padding-bottom: var(--space-3);
+  /* Rolagem horizontal continua funcionando (roda do mouse com shift, trackpad, ou os botões de
+   * seta no toolbar) — só a barra de rolagem em si fica invisível. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.board::-webkit-scrollbar {
+  display: none;
 }
 
 .board > [role='listitem'] {
   display: flex;
-  height: 100%;
 }
 
 .skeletonColumn {
   flex: 0 0 18rem;
   min-width: 18rem;
+  /* Altura própria explícita: `.board` não tem mais altura própria (colunas reais crescem livre
+   * e sem conteúdo para dar altura, um placeholder vazio colapsaria a 0 sem isso). */
+  height: 24rem;
   border-radius: var(--radius-lg);
   background-color: var(--color-bg-elevated);
   border: var(--border-width) solid var(--color-border);

@@ -41,7 +41,10 @@ export function CardBlockSection({ cardId, cardKey, projectId, blocked, block, c
   const [error, setError] = useState<string | null>(null)
 
   function invalidateCardsList() {
-    return queryClient.invalidateQueries({ queryKey: ['cards', projectId] })
+    queryClient.invalidateQueries({ queryKey: ['cards', projectId] })
+    // Bloqueio/desbloqueio muda `blockedCards` e a seção "Atenção" do Dashboard (ver ADR 0018) —
+    // barato invalidar mesmo que o Dashboard não esteja aberto no momento.
+    return queryClient.invalidateQueries({ queryKey: ['projectMetrics', 'current', projectId] })
   }
 
   const blockMutation = useMutation({

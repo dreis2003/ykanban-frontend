@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { MainLayout } from '@/layouts/MainLayout/MainLayout'
 import { LoginPage } from '@/app/pages/LoginPage/LoginPage'
 import { NotFoundPage } from '@/app/pages/NotFoundPage/NotFoundPage'
+import { ProjectDashboardPage } from '@/app/pages/ProjectDashboardPage/ProjectDashboardPage'
 import { ProjectDetailPage } from '@/app/pages/ProjectDetailPage/ProjectDetailPage'
 import { ProjectsPage } from '@/app/pages/ProjectsPage/ProjectsPage'
 import { RequireAuth } from '@/features/auth/RequireAuth'
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { path: ROUTES.projects, element: <ProjectsPage /> },
       { path: '/projects/:projectId', element: <ProjectDetailPage /> },
       { path: '/projects/:projectId/cards/:cardId', element: <ProjectDetailPage /> },
+      { path: '/projects/:projectId/dashboard', element: <ProjectDashboardPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

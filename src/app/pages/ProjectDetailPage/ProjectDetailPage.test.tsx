@@ -67,8 +67,15 @@ const PROJECT = {
 
 const ARCHIVED_PROJECT = { ...PROJECT, status: 'ARCHIVED' }
 
-function columnOf(id: string, type: string, name: string, position: number, wipLimit: number | null = null) {
-  return { id, type, name, position, wipLimit }
+function columnOf(
+  id: string,
+  type: string,
+  name: string,
+  position: number,
+  wipLimit: number | null = null,
+  cardCount = 0,
+) {
+  return { id, type, name, position, wipLimit, cardCount }
 }
 
 const BOARD = {
@@ -76,9 +83,9 @@ const BOARD = {
   projectId: 'p1',
   name: 'Kanban',
   columns: [
-    columnOf('c1', 'BACKLOG', 'Backlog', 1),
+    columnOf('c1', 'BACKLOG', 'Backlog', 1, null, 2),
     columnOf('c2', 'READY', 'Pronto para Desenvolvimento', 2),
-    columnOf('c3', 'DOING', 'Em Desenvolvimento', 3, 3),
+    columnOf('c3', 'DOING', 'Em Desenvolvimento', 3, 3, 1),
     columnOf('c4', 'CODE_REVIEW', 'Code Review', 4),
     columnOf('c5', 'TESTING', 'Em Testes', 5),
     columnOf('c6', 'READY_FOR_PRODUCTION', 'Pronto para Produção', 6),
@@ -335,6 +342,80 @@ describe('ProjectDetailPage', () => {
     await waitFor(() => expect(screen.getByText('Fila')).toBeInTheDocument())
     // Backlog tem 2 cards carregados (card1, card2) e agora wipLimit=5.
     expect(screen.getByText('2 / 5')).toBeInTheDocument()
+  })
+
+  it('coluna no limite mostra "Limite atingido" e coluna acima do limite mostra "Acima do limite"', async () => {
+    const boardWithWipStates = {
+      ...BOARD,
+      columns: [
+        BOARD.columns[0],
+        BOARD.columns[1],
+        { ...BOARD.columns[2], wipLimit: 1, cardCount: 1 },
+        { ...BOARD.columns[3], wipLimit: 1, cardCount: 2 },
+        ...BOARD.columns.slice(4),
+      ],
+    }
+    mockFetchRouter(boardAndProjectHandlers(boardWithWipStates))
+
+    renderDetailPage('p1')
+    await screen.findByText('Backlog')
+
+    expect(screen.getByText('1 / 1')).toBeInTheDocument()
+    expect(screen.getByText('Limite atingido')).toBeInTheDocument()
+    expect(screen.getByText('2 / 1')).toBeInTheDocument()
+    expect(screen.getByText('Acima do limite')).toBeInTheDocument()
+  })
+
+  it('reduzir o limite de WIP abaixo da contagem atual mostra aviso e exige confirmação', async () => {
+    const user = userEvent.setup()
+    let updated = false
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = input.toString()
+        const method = (init?.method ?? 'GET').toUpperCase()
+        const patchedBoard = { ...BOARD, columns: [{ ...BOARD.columns[0], wipLimit: 1 }, ...BOARD.columns.slice(1)] }
+        if (method === 'GET' && url.includes('/projects/p1/board')) {
+          return Promise.resolve(jsonResponse(updated ? patchedBoard : BOARD))
+        }
+        if (method === 'GET' && url.includes('/projects/p1/cards')) return Promise.resolve(jsonResponse(CARDS))
+        if (method === 'GET' && url.endsWith('/projects/p1')) return Promise.resolve(jsonResponse(PROJECT))
+        if (method === 'PATCH' && url.includes('/board/columns/c1')) {
+          updated = true
+          return Promise.resolve(jsonResponse(patchedBoard))
+        }
+        return Promise.reject(new Error(`fetch inesperado: ${method} ${url}`))
+      }),
+    )
+
+    renderDetailPage('p1')
+    await screen.findByText('Backlog')
+
+    // Backlog já tem 2 cards carregados (card1, card2) — reduzir para 1 deve avisar antes de salvar.
+    await user.click(screen.getByRole('button', { name: 'Editar Backlog' }))
+    await user.type(screen.getByLabelText('Limite WIP'), '1')
+    await user.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    expect(await screen.findByText(/ficará acima do WIP permitido/)).toBeInTheDocument()
+    const confirmButton = screen.getByRole('button', { name: 'Confirmar mesmo assim' })
+
+    await user.click(confirmButton)
+
+    await waitFor(() => expect(screen.getByText('2 / 1')).toBeInTheDocument())
+  })
+
+  it('rejeita limite de WIP acima de 999 no formulário sem chamar a API', async () => {
+    const user = userEvent.setup()
+    mockFetchRouter(boardAndProjectHandlers())
+
+    renderDetailPage('p1')
+    await screen.findByText('Backlog')
+
+    await user.click(screen.getByRole('button', { name: 'Editar Backlog' }))
+    await user.type(screen.getByLabelText('Limite WIP'), '1000')
+    await user.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    expect(await screen.findByText(/entre 1 e 999/)).toBeInTheDocument()
   })
 
   it('VIEWER não vê ação de editar coluna', async () => {

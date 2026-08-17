@@ -1,8 +1,8 @@
 /**
- * height (não min-height): páginas como o board Kanban precisam de uma altura real e limitada
- * para poder usar flex:1 + scroll interno (colunas rolando verticalmente dentro da própria
- * altura disponível, em vez de esticar a página inteira). .main abaixo assume o scroll do
- * documento nesse esquema — páginas curtas (ex.: login) simplesmente não o acionam.
+ * height (não min-height): dá a `.main` abaixo uma altura real para `overflow-y: auto` funcionar.
+ * O board Kanban não tem scroll interno nas colunas — elas crescem livremente para caber todos os
+ * Cards, e é este container (`.main`) que rola a página inteira verticalmente. Páginas curtas
+ * (ex.: login) simplesmente não acionam esse scroll.
  */
 .shell {
   height: 100dvh;

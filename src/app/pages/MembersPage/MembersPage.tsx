@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, Plus } from 'lucide-react'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { ROUTES } from '@/app/router/routes'
 import { useAuth } from '@/features/auth/AuthContext'
 import type { MembershipRole } from '@/features/auth/types'
@@ -10,6 +10,7 @@ import { InviteMemberDialog } from '@/features/invitations/components/InviteMemb
 import { InvitationsPanel } from '@/features/invitations/components/InvitationsPanel/InvitationsPanel'
 import { MembersTable } from '@/features/members/components/MembersTable/MembersTable'
 import { ApiError } from '@/shared/api/apiError'
+import { resolveReturnTo } from '@/shared/utils/returnTo'
 import styles from './MembersPage.module.css'
 
 type Tab = 'users' | 'invitations'
@@ -32,6 +33,9 @@ export function MembersPage() {
   const [inviteNotice, setInviteNotice] = useState<string | null>(null)
 
   const tab: Tab = searchParams.get('tab') === 'invitations' ? 'invitations' : 'users'
+  // `returnTo` é validado contra um allow-list (ver `resolveReturnTo`) antes de virar destino de
+  // navegação — nunca confiar no valor bruto da query string, que pode ter sido manipulado.
+  const backTarget = resolveReturnTo(searchParams.get('returnTo'))
 
   function switchTab(next: Tab) {
     setSearchParams(
@@ -86,6 +90,11 @@ export function MembersPage() {
 
   return (
     <section className={styles.page}>
+      <Link to={backTarget.to} className={styles.backLink}>
+        <ArrowLeft size={16} aria-hidden="true" />
+        {backTarget.label}
+      </Link>
+
       <header className={styles.header}>
         <div>
           <h1 className={styles.title}>Membros</h1>

@@ -6,6 +6,8 @@ import { LoginPage } from '@/app/pages/LoginPage/LoginPage'
 import { MembersPage } from '@/app/pages/MembersPage/MembersPage'
 import { NotFoundPage } from '@/app/pages/NotFoundPage/NotFoundPage'
 import { PlatformDashboardPage } from '@/app/pages/PlatformDashboardPage/PlatformDashboardPage'
+import { PlatformPlanDetailPage } from '@/app/pages/PlatformPlanDetailPage/PlatformPlanDetailPage'
+import { PlatformPlansPage } from '@/app/pages/PlatformPlansPage/PlatformPlansPage'
 import { PlatformTenantDetailPage } from '@/app/pages/PlatformTenantDetailPage/PlatformTenantDetailPage'
 import { PlatformTenantsPage } from '@/app/pages/PlatformTenantsPage/PlatformTenantsPage'
 import { ProjectDashboardPage } from '@/app/pages/ProjectDashboardPage/ProjectDashboardPage'
@@ -64,6 +66,8 @@ export const router = createBrowserRouter([
       { path: ROUTES.platformDashboard, element: <PlatformDashboardPage /> },
       { path: ROUTES.platformTenants, element: <PlatformTenantsPage /> },
       { path: '/platform/tenants/:tenantId', element: <PlatformTenantDetailPage /> },
+      { path: ROUTES.platformPlans, element: <PlatformPlansPage /> },
+      { path: '/platform/plans/:planId', element: <PlatformPlanDetailPage /> },
     ],
   },
 ])

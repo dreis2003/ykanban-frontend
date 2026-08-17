@@ -1,8 +1,9 @@
 import { useCallback } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/app/router/routes'
 import { useAuth } from '@/features/auth/AuthContext'
 import type { MembershipRole } from '@/features/auth/types'
+import { isSafeReturnTo } from '@/shared/utils/returnTo'
 import styles from './MainLayout.module.css'
 
 const ROLE_LABELS: Record<MembershipRole, string> = {
@@ -21,10 +22,18 @@ const ROLE_LABELS: Record<MembershipRole, string> = {
 export function MainLayout() {
   const { user, activeTenant, membershipRole, platformRoles, logout, refreshAvailableTenants } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleSwitchOrganization = useCallback(() => {
     void refreshAvailableTenants().then(() => navigate(ROUTES.selectOrganization))
   }, [refreshAvailableTenants, navigate])
+
+  // `returnTo` só é anexado quando a página atual é uma das rotas que a tela de Membros sabe voltar
+  // para (ver `resolveReturnTo`) — evita propagar um valor que seria descartado do outro lado mesmo
+  // assim, e mantém a URL limpa quando não há para onde voltar.
+  const membersHref = isSafeReturnTo(location.pathname)
+    ? `${ROUTES.members}?returnTo=${encodeURIComponent(location.pathname)}`
+    : ROUTES.members
 
   return (
     <div className={styles.shell}>
@@ -39,26 +48,30 @@ export function MainLayout() {
           </div>
         </div>
 
-        {membershipRole === 'ADMIN' || platformRoles.includes('PLATFORM_ADMIN') ? (
-          <nav className={styles.nav}>
-            {membershipRole === 'ADMIN' ? (
-              <NavLink
-                to={ROUTES.members}
-                className={({ isActive }) => (isActive ? styles.navLinkActive : styles.navLink)}
-              >
-                Membros
-              </NavLink>
-            ) : null}
-            {platformRoles.includes('PLATFORM_ADMIN') ? (
-              <NavLink
-                to={ROUTES.platformDashboard}
-                className={({ isActive }) => (isActive ? styles.navLinkActive : styles.navLink)}
-              >
-                Administração da Plataforma
-              </NavLink>
-            ) : null}
-          </nav>
-        ) : null}
+        <nav className={styles.nav}>
+          <NavLink
+            to={ROUTES.projects}
+            className={({ isActive }) => (isActive ? styles.navLinkActive : styles.navLink)}
+          >
+            Projetos
+          </NavLink>
+          {membershipRole === 'ADMIN' ? (
+            <NavLink
+              to={membersHref}
+              className={({ isActive }) => (isActive ? styles.navLinkActive : styles.navLink)}
+            >
+              Membros
+            </NavLink>
+          ) : null}
+          {platformRoles.includes('PLATFORM_ADMIN') ? (
+            <NavLink
+              to={ROUTES.platformDashboard}
+              className={({ isActive }) => (isActive ? styles.navLinkActive : styles.navLink)}
+            >
+              Administração da Plataforma
+            </NavLink>
+          ) : null}
+        </nav>
 
         {user ? (
           <div className={styles.session}>

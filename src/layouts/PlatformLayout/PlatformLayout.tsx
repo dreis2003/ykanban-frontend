@@ -39,6 +39,12 @@ export function PlatformLayout() {
           >
             Empresas
           </NavLink>
+          <NavLink
+            to={ROUTES.platformPlans}
+            className={({ isActive }) => (isActive ? styles.navLinkActive : styles.navLink)}
+          >
+            Planos
+          </NavLink>
         </nav>
 
         {user ? (

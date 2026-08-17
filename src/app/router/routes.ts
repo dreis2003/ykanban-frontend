@@ -8,6 +8,8 @@ export const ROUTES = {
   platformDashboard: '/platform',
   platformTenants: '/platform/tenants',
   platformTenantDetail: (tenantId: string) => `/platform/tenants/${tenantId}`,
+  platformPlans: '/platform/plans',
+  platformPlanDetail: (planId: string) => `/platform/plans/${planId}`,
   acceptInvitation: (token: string) => `/invitations/${token}`,
   projectDetail: (id: string) => `/projects/${id}`,
   projectDashboard: (id: string) => `/projects/${id}/dashboard`,

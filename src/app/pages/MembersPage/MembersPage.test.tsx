@@ -85,12 +85,12 @@ function authValue(overrides: Partial<AuthContextValue> = {}): AuthContextValue 
   }
 }
 
-function renderMembersPage(auth: AuthContextValue = authValue()) {
+function renderMembersPage(auth: AuthContextValue = authValue(), initialEntries: string[] = ['/settings/members']) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <AuthContext.Provider value={auth}>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={initialEntries}>
           <MembersPage />
         </MemoryRouter>
       </AuthContext.Provider>
@@ -115,6 +115,56 @@ describe('MembersPage', () => {
     await waitFor(() => expect(screen.getByText('Ana Admin')).toBeInTheDocument())
     expect(screen.getByText('Beto Dev')).toBeInTheDocument()
     expect(screen.getByText('você')).toBeInTheDocument()
+  })
+
+  it('mostra "Voltar para Projetos" quando não há returnTo na URL', async () => {
+    mockFetchRouter([
+      { match: (url, method) => method === 'GET' && url.includes('/members?'), respond: () => jsonResponse(pageOf([ADMIN_MEMBER])) },
+    ])
+
+    renderMembersPage(authValue(), ['/settings/members'])
+
+    expect(await screen.findByRole('link', { name: /Voltar para Projetos/ })).toHaveAttribute('href', '/projects')
+  })
+
+  it('mostra "Voltar ao Kanban" quando returnTo aponta para um projeto válido', async () => {
+    mockFetchRouter([
+      { match: (url, method) => method === 'GET' && url.includes('/members?'), respond: () => jsonResponse(pageOf([ADMIN_MEMBER])) },
+    ])
+
+    renderMembersPage(authValue(), [
+      '/settings/members?returnTo=%2Fprojects%2F11111111-1111-1111-1111-111111111111',
+    ])
+
+    expect(await screen.findByRole('link', { name: /Voltar ao Kanban/ })).toHaveAttribute(
+      'href',
+      '/projects/11111111-1111-1111-1111-111111111111',
+    )
+  })
+
+  it('mostra "Voltar ao Dashboard" quando returnTo aponta para o dashboard do projeto', async () => {
+    mockFetchRouter([
+      { match: (url, method) => method === 'GET' && url.includes('/members?'), respond: () => jsonResponse(pageOf([ADMIN_MEMBER])) },
+    ])
+
+    renderMembersPage(authValue(), [
+      '/settings/members?returnTo=%2Fprojects%2F11111111-1111-1111-1111-111111111111%2Fdashboard',
+    ])
+
+    expect(await screen.findByRole('link', { name: /Voltar ao Dashboard/ })).toHaveAttribute(
+      'href',
+      '/projects/11111111-1111-1111-1111-111111111111/dashboard',
+    )
+  })
+
+  it('ignora um returnTo malicioso e cai em "Voltar para Projetos"', async () => {
+    mockFetchRouter([
+      { match: (url, method) => method === 'GET' && url.includes('/members?'), respond: () => jsonResponse(pageOf([ADMIN_MEMBER])) },
+    ])
+
+    renderMembersPage(authValue(), ['/settings/members?returnTo=https%3A%2F%2Fevil.com'])
+
+    expect(await screen.findByRole('link', { name: /Voltar para Projetos/ })).toHaveAttribute('href', '/projects')
   })
 
   it('redireciona quem não é ADMIN para /projects', () => {

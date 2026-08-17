@@ -5,9 +5,11 @@ interface Props {
   open: boolean
   isSubmitting: boolean
   errorMessage: string | null
-  onSubmit: (values: { name: string; slug: string }) => void
+  onSubmit: (values: { name: string; slug: string; adminEmail: string }) => void
   onClose: () => void
 }
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function slugify(value: string): string {
   return value
@@ -19,13 +21,19 @@ function slugify(value: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
-/** Slug é imutável após a criação (ver ADR 0023) — este formulário é o único lugar onde ele é
- * definido; sugerido automaticamente a partir do nome, mas sempre editável antes de enviar. */
+/**
+ * Slug é imutável após a criação (ver ADR 0023) — este formulário é o único lugar onde ele é
+ * definido; sugerido automaticamente a partir do nome, mas sempre editável antes de enviar.
+ *
+ * <p>Provisionamento completo (ver ADR 0024): nunca pede Role (primeiro administrador é sempre
+ * ADMIN) nem senha (quem aceita o convite define a própria conta).
+ */
 export function CreateTenantDialog({ open, isSubmitting, errorMessage, onSubmit, onClose }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [slugTouched, setSlugTouched] = useState(false)
+  const [adminEmail, setAdminEmail] = useState('')
   const [fieldError, setFieldError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -36,6 +44,7 @@ export function CreateTenantDialog({ open, isSubmitting, errorMessage, onSubmit,
       setName('')
       setSlug('')
       setSlugTouched(false)
+      setAdminEmail('')
       setFieldError(null)
       dialog.showModal()
     }
@@ -55,22 +64,27 @@ export function CreateTenantDialog({ open, isSubmitting, errorMessage, onSubmit,
     event.preventDefault()
     const trimmedName = name.trim()
     const trimmedSlug = slug.trim()
-    if (!trimmedName || !trimmedSlug) {
-      setFieldError('Nome e slug são obrigatórios.')
+    const trimmedEmail = adminEmail.trim()
+    if (!trimmedName || !trimmedSlug || !trimmedEmail) {
+      setFieldError('Nome, slug e e-mail do administrador são obrigatórios.')
+      return
+    }
+    if (!EMAIL_PATTERN.test(trimmedEmail)) {
+      setFieldError('E-mail do administrador inválido.')
       return
     }
     setFieldError(null)
-    onSubmit({ name: trimmedName, slug: trimmedSlug })
+    onSubmit({ name: trimmedName, slug: trimmedSlug, adminEmail: trimmedEmail })
   }
 
   return (
     <dialog ref={dialogRef} className={styles.dialog} onCancel={onClose}>
       <form className={styles.form} onSubmit={handleSubmit} noValidate>
-        <h2 className={styles.title}>Nova organização</h2>
+        <h2 className={styles.title}>Nova empresa</h2>
 
         <div className={styles.field}>
           <label className={styles.label} htmlFor="tenant-name">
-            Nome
+            Nome da empresa
           </label>
           <input
             id="tenant-name"
@@ -101,6 +115,23 @@ export function CreateTenantDialog({ open, isSubmitting, errorMessage, onSubmit,
           <p className={styles.hint}>Identificador único e permanente da organização — não pode ser alterado depois.</p>
         </div>
 
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="tenant-admin-email">
+            E-mail do administrador
+          </label>
+          <input
+            id="tenant-admin-email"
+            type="email"
+            className={styles.input}
+            value={adminEmail}
+            onChange={(event) => setAdminEmail(event.target.value)}
+            disabled={isSubmitting}
+          />
+          <p className={styles.hint}>
+            O administrador receberá um convite para criar ou acessar sua conta e assumir a administração da empresa.
+          </p>
+        </div>
+
         {fieldError ? (
           <p className={styles.fieldError} role="alert">
             {fieldError}
@@ -118,7 +149,7 @@ export function CreateTenantDialog({ open, isSubmitting, errorMessage, onSubmit,
             Cancelar
           </button>
           <button type="submit" className={styles.submit} disabled={isSubmitting}>
-            {isSubmitting ? 'Criando…' : 'Criar organização'}
+            {isSubmitting ? 'Criando empresa…' : 'Criar empresa e enviar convite'}
           </button>
         </div>
       </form>

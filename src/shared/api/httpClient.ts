@@ -7,6 +7,9 @@ interface RequestOptions {
   signal?: AbortSignal
   /** login/refresh não devem tentar se auto-renovar em um 401 — evitaria um loop infinito. */
   skipAuthRetry?: boolean
+  /** Ex.: `Idempotency-Key` (ver ADR 0024) — nunca sobrescreve Accept/Content-Type/Authorization,
+   * que continuam calculados internamente por `rawFetch`. */
+  headers?: HeadersInit
 }
 
 async function parseErrorResponse(response: Response): Promise<ApiError> {

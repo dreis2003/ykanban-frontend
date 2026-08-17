@@ -1,13 +1,27 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { ROUTES } from '@/app/router/routes'
 import { platformApi } from '@/features/platform/api/platformApi'
-import type { PlatformTenantDetail } from '@/features/platform/types'
+import { ReplaceInitialAdminDialog } from '@/features/platform/components/ReplaceInitialAdminDialog/ReplaceInitialAdminDialog'
+import type { InitialAdminInvitationStatus, PlatformTenantDetail } from '@/features/platform/types'
 import { ApiError } from '@/shared/api/apiError'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog/ConfirmDialog'
 import { StatusMessage } from '@/shared/components/StatusMessage/StatusMessage'
 import styles from './PlatformTenantDetailPage.module.css'
+
+interface ProvisioningNavigationState {
+  justProvisioned?: boolean
+  adminEmail?: string
+  emailSent?: boolean
+}
+
+const INITIAL_ADMIN_STATUS_LABELS: Record<InitialAdminInvitationStatus, string> = {
+  PENDING: 'Convite pendente',
+  EXPIRED: 'Convite expirado',
+  REVOKED: 'Convite revogado',
+  ACCEPTED: 'Convite aceito',
+}
 
 function errorMessageFrom(error: unknown): string {
   if (error instanceof ApiError) {
@@ -16,18 +30,24 @@ function errorMessageFrom(error: unknown): string {
   return 'Não foi possível concluir a operação. Tente novamente.'
 }
 
-/** Detalhe de uma organização pela plataforma (ver ADR 0023) — nunca lê conteúdo interno do
- * Tenant (Cards/Comments), só metadados (contagens + lista de ADMINs ativos). Nome é o único
- * campo editável; slug é imutável após a criação (ver Tenant#rename). */
+/** Detalhe de uma organização pela plataforma (ver ADR 0023/0024) — nunca lê conteúdo interno do
+ * Tenant (Cards/Comments), só metadados (contagens + lista de ADMINs ativos + estado do convite de
+ * ADMIN inicial). Nome é o único campo editável; slug é imutável após a criação. */
 export function PlatformTenantDetailPage() {
   const { tenantId } = useParams<{ tenantId: string }>()
   const queryClient = useQueryClient()
+  const location = useLocation()
+  const provisioningState = location.state as ProvisioningNavigationState | null
 
   const [isEditingName, setIsEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
   const [renameError, setRenameError] = useState<string | null>(null)
   const [confirmingStatusChange, setConfirmingStatusChange] = useState(false)
+  const [confirmingRevoke, setConfirmingRevoke] = useState(false)
+  const [replaceOpen, setReplaceOpen] = useState(false)
+  const [replaceError, setReplaceError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [provisioningBannerDismissed, setProvisioningBannerDismissed] = useState(false)
 
   const {
     data: tenant,
@@ -80,6 +100,38 @@ export function PlatformTenantDetailPage() {
     onError: (error: unknown) => setActionError(errorMessageFrom(error)),
   })
 
+  const resendInitialAdminMutation = useMutation({
+    mutationFn: () => platformApi.resendInitialAdminInvitation(tenantId as string),
+    onSuccess: (updated) => {
+      applyDetail(updated)
+      setActionError(null)
+    },
+    onError: (error: unknown) => setActionError(errorMessageFrom(error)),
+  })
+
+  const replaceInitialAdminMutation = useMutation({
+    mutationFn: (email: string) => platformApi.replaceInitialAdminInvitation(tenantId as string, email),
+    onSuccess: (updated) => {
+      applyDetail(updated)
+      setReplaceOpen(false)
+      setReplaceError(null)
+    },
+    onError: (error: unknown) => setReplaceError(errorMessageFrom(error)),
+  })
+
+  const revokeInitialAdminMutation = useMutation({
+    mutationFn: () => platformApi.revokeInitialAdminInvitation(tenantId as string),
+    onSuccess: (updated) => {
+      applyDetail(updated)
+      setConfirmingRevoke(false)
+      setActionError(null)
+    },
+    onError: (error: unknown) => {
+      setActionError(errorMessageFrom(error))
+      setConfirmingRevoke(false)
+    },
+  })
+
   function startEditingName() {
     setNameInput(tenant?.name ?? '')
     setRenameError(null)
@@ -95,6 +147,8 @@ export function PlatformTenantDetailPage() {
     renameMutation.mutate(trimmed)
   }
 
+  const showProvisioningBanner = provisioningState?.justProvisioned && !provisioningBannerDismissed
+
   return (
     <section className={styles.page}>
       <nav className={styles.breadcrumb} aria-label="Navegação">
@@ -106,6 +160,17 @@ export function PlatformTenantDetailPage() {
           </>
         ) : null}
       </nav>
+
+      {showProvisioningBanner ? (
+        <p className={provisioningState?.emailSent ? styles.successBanner : styles.warningBanner} role="status">
+          {provisioningState?.emailSent
+            ? `Empresa criada com sucesso. Convite enviado para ${provisioningState.adminEmail}.`
+            : 'A empresa foi criada, mas não foi possível enviar o convite. Você pode reenviar o convite abaixo.'}
+          <button type="button" className={styles.dismissBanner} onClick={() => setProvisioningBannerDismissed(true)}>
+            Fechar
+          </button>
+        </p>
+      ) : null}
 
       {isLoading ? <StatusMessage variant="loading" title="Carregando organização…" /> : null}
       {isError ? <StatusMessage variant="error" title="Não foi possível carregar esta organização." /> : null}
@@ -183,18 +248,65 @@ export function PlatformTenantDetailPage() {
           </div>
 
           <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>Administradores ativos</h2>
-            {tenant.admins.length === 0 ? (
-              <p className={styles.emptyAdmins}>Nenhum administrador ativo nesta organização.</p>
-            ) : (
+            <h2 className={styles.sectionTitle}>Administrador inicial</h2>
+            {tenant.admins.length > 0 ? (
               <ul className={styles.adminList}>
                 {tenant.admins.map((admin) => (
                   <li key={admin.id} className={styles.adminItem}>
                     <span className={styles.adminName}>{admin.name}</span>
                     <span className={styles.adminEmail}>{admin.email}</span>
+                    <span className={styles.onboardingBadge} data-onboarding="active">
+                      Administrador ativo
+                    </span>
                   </li>
                 ))}
               </ul>
+            ) : tenant.initialAdminInvitation ? (
+              <div className={styles.invitationCard}>
+                <div className={styles.invitationHeader}>
+                  <span className={styles.invitationEmail}>{tenant.initialAdminInvitation.email}</span>
+                  <span className={styles.onboardingBadge} data-onboarding={tenant.initialAdminInvitation.status}>
+                    {INITIAL_ADMIN_STATUS_LABELS[tenant.initialAdminInvitation.status]}
+                  </span>
+                </div>
+                <p className={styles.invitationMeta}>
+                  Enviado em {new Date(tenant.initialAdminInvitation.createdAt).toLocaleString('pt-BR')} — expira em{' '}
+                  {new Date(tenant.initialAdminInvitation.expiresAt).toLocaleString('pt-BR')}
+                </p>
+                <div className={styles.invitationActions}>
+                  <button
+                    type="button"
+                    className={styles.actionButton}
+                    onClick={() => resendInitialAdminMutation.mutate()}
+                    disabled={resendInitialAdminMutation.isPending || tenant.status === 'SUSPENDED'}
+                  >
+                    {resendInitialAdminMutation.isPending ? 'Reenviando…' : 'Reenviar'}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.actionButton}
+                    onClick={() => {
+                      setReplaceError(null)
+                      setReplaceOpen(true)
+                    }}
+                    disabled={tenant.status === 'SUSPENDED'}
+                  >
+                    Trocar e-mail
+                  </button>
+                  {tenant.initialAdminInvitation.status === 'PENDING' ? (
+                    <button
+                      type="button"
+                      className={styles.actionButtonDanger}
+                      onClick={() => setConfirmingRevoke(true)}
+                      disabled={tenant.status === 'SUSPENDED'}
+                    >
+                      Revogar
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : (
+              <p className={styles.emptyAdmins}>Nenhum convite de administrador registrado para esta organização.</p>
             )}
           </section>
 
@@ -227,6 +339,24 @@ export function PlatformTenantDetailPage() {
             isConfirming={suspendMutation.isPending}
             onConfirm={() => suspendMutation.mutate()}
             onCancel={() => setConfirmingStatusChange(false)}
+          />
+
+          <ConfirmDialog
+            open={confirmingRevoke}
+            title="Revogar convite do administrador inicial?"
+            description="A empresa continuará existindo, mas nenhum administrador poderá acessá-la até que um novo convite seja enviado."
+            confirmLabel="Revogar"
+            isConfirming={revokeInitialAdminMutation.isPending}
+            onConfirm={() => revokeInitialAdminMutation.mutate()}
+            onCancel={() => setConfirmingRevoke(false)}
+          />
+
+          <ReplaceInitialAdminDialog
+            open={replaceOpen}
+            isSubmitting={replaceInitialAdminMutation.isPending}
+            errorMessage={replaceError}
+            onSubmit={(email) => replaceInitialAdminMutation.mutate(email)}
+            onClose={() => setReplaceOpen(false)}
           />
         </>
       ) : null}

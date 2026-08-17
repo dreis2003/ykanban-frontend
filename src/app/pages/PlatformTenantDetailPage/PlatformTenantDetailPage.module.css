@@ -140,6 +140,39 @@
   padding: var(--space-3) var(--space-4);
 }
 
+.successBanner,
+.warningBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.successBanner {
+  color: var(--color-success);
+  background-color: var(--color-success-bg);
+}
+
+.warningBanner {
+  color: var(--color-warning);
+  background-color: var(--color-warning-bg);
+}
+
+.dismissBanner {
+  appearance: none;
+  border: none;
+  background: none;
+  color: inherit;
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  text-decoration: underline;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .kpiGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
@@ -215,6 +248,88 @@
 .adminEmail {
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
+}
+
+.onboardingBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-full);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.onboardingBadge[data-onboarding='active'],
+.onboardingBadge[data-onboarding='ACCEPTED'] {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.onboardingBadge[data-onboarding='PENDING'] {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.onboardingBadge[data-onboarding='EXPIRED'],
+.onboardingBadge[data-onboarding='REVOKED'] {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.invitationCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-sunken);
+}
+
+.invitationHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.invitationEmail {
+  font-weight: var(--font-weight-medium);
+}
+
+.invitationMeta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.invitationActions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.actionButton,
+.actionButtonDanger {
+  appearance: none;
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-elevated);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.actionButtonDanger {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.actionButton:disabled,
+.actionButtonDanger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .actions {

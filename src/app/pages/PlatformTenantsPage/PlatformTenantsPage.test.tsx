@@ -78,13 +78,26 @@ describe('PlatformTenantsPage', () => {
     expect(screen.getByText('acme')).toBeInTheDocument()
   })
 
-  it('cria uma organização com sucesso', async () => {
+  it('cria uma empresa com sucesso e navega para o detalhe', async () => {
     const user = userEvent.setup()
     mockFetchRouter([
       { match: (url, method) => method === 'GET' && url.includes('/platform/tenants?'), respond: () => jsonResponse(pageOf([])) },
       {
         match: (url, method) => method === 'POST' && url.endsWith('/platform/tenants'),
-        respond: () => jsonResponse({ ...ACME_TENANT, memberCount: 0, projectCount: 0 }, 201),
+        respond: () =>
+          jsonResponse(
+            {
+              tenant: { ...ACME_TENANT, memberCount: 0, projectCount: 0 },
+              initialAdminInvitation: {
+                id: 'inv1',
+                email: 'joao@empresa.dev',
+                status: 'PENDING',
+                expiresAt: '2026-01-04T00:00:00Z',
+                emailSent: true,
+              },
+            },
+            201,
+          ),
       },
     ])
 
@@ -93,8 +106,9 @@ describe('PlatformTenantsPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Nova organização' }))
     const dialog = await screen.findByRole('dialog')
-    await user.type(within(dialog).getByLabelText('Nome'), 'Acme')
-    await user.click(within(dialog).getByRole('button', { name: 'Criar organização' }))
+    await user.type(within(dialog).getByLabelText('Nome da empresa'), 'Acme')
+    await user.type(within(dialog).getByLabelText('E-mail do administrador'), 'joao@empresa.dev')
+    await user.click(within(dialog).getByRole('button', { name: 'Criar empresa e enviar convite' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
@@ -114,8 +128,9 @@ describe('PlatformTenantsPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Nova organização' }))
     const dialog = await screen.findByRole('dialog')
-    await user.type(within(dialog).getByLabelText('Nome'), 'Acme')
-    await user.click(within(dialog).getByRole('button', { name: 'Criar organização' }))
+    await user.type(within(dialog).getByLabelText('Nome da empresa'), 'Acme')
+    await user.type(within(dialog).getByLabelText('E-mail do administrador'), 'joao@empresa.dev')
+    await user.click(within(dialog).getByRole('button', { name: 'Criar empresa e enviar convite' }))
 
     await waitFor(() => expect(within(dialog).getByText('Já existe uma organização com este slug.')).toBeInTheDocument())
   })

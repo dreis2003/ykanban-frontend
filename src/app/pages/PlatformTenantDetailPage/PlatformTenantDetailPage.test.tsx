@@ -45,6 +45,20 @@ const DETAIL = {
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
   admins: [{ id: 'u1', name: 'Ana Admin', email: 'ana@ykanban.dev' }],
+  initialAdminInvitation: null,
+}
+
+const DETAIL_PENDING_INVITATION = {
+  ...DETAIL,
+  admins: [],
+  initialAdminInvitation: {
+    id: 'inv1',
+    email: 'joao@empresa.dev',
+    status: 'PENDING',
+    createdAt: '2026-01-01T00:00:00Z',
+    expiresAt: '2026-01-04T00:00:00Z',
+    lastEmailSentAt: '2026-01-01T00:00:00Z',
+  },
 }
 
 function renderPage() {
@@ -119,5 +133,86 @@ describe('PlatformTenantDetailPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Suspender' }))
 
     await waitFor(() => expect(screen.getByText('Suspensa')).toBeInTheDocument())
+  })
+
+  it('mostra o convite de administrador inicial pendente com ações', async () => {
+    mockFetchRouter([
+      { match: (url, method) => method === 'GET' && url.endsWith('/platform/tenants/t1'), respond: () => jsonResponse(DETAIL_PENDING_INVITATION) },
+    ])
+
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('joao@empresa.dev')).toBeInTheDocument())
+    expect(screen.getByText('Convite pendente')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reenviar' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Trocar e-mail' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Revogar' })).toBeInTheDocument()
+  })
+
+  it('reenvia o convite de administrador inicial', async () => {
+    const user = userEvent.setup()
+    mockFetchRouter([
+      { match: (url, method) => method === 'GET' && url.endsWith('/platform/tenants/t1'), respond: () => jsonResponse(DETAIL_PENDING_INVITATION) },
+      {
+        match: (url, method) => method === 'POST' && url.endsWith('/initial-admin-invitation/resend'),
+        respond: () => jsonResponse({ ...DETAIL_PENDING_INVITATION, initialAdminInvitation: { ...DETAIL_PENDING_INVITATION.initialAdminInvitation, id: 'inv2' } }),
+      },
+    ])
+
+    renderPage()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Reenviar' })).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'Reenviar' }))
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Reenviar' })).not.toBeDisabled())
+  })
+
+  it('troca o e-mail do administrador inicial', async () => {
+    const user = userEvent.setup()
+    mockFetchRouter([
+      { match: (url, method) => method === 'GET' && url.endsWith('/platform/tenants/t1'), respond: () => jsonResponse(DETAIL_PENDING_INVITATION) },
+      {
+        match: (url, method) => method === 'POST' && url.endsWith('/initial-admin-invitation/replace'),
+        respond: () =>
+          jsonResponse({
+            ...DETAIL_PENDING_INVITATION,
+            initialAdminInvitation: { ...DETAIL_PENDING_INVITATION.initialAdminInvitation, email: 'maria@empresa.dev' },
+          }),
+      },
+    ])
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('joao@empresa.dev')).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'Trocar e-mail' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText('Novo e-mail do administrador'), 'maria@empresa.dev')
+    await user.click(within(dialog).getByRole('button', { name: 'Trocar e enviar novo convite' }))
+
+    await waitFor(() => expect(screen.getByText('maria@empresa.dev')).toBeInTheDocument())
+  })
+
+  it('revoga o convite de administrador inicial após confirmação', async () => {
+    const user = userEvent.setup()
+    mockFetchRouter([
+      { match: (url, method) => method === 'GET' && url.endsWith('/platform/tenants/t1'), respond: () => jsonResponse(DETAIL_PENDING_INVITATION) },
+      {
+        match: (url, method) => method === 'POST' && url.endsWith('/initial-admin-invitation/revoke'),
+        respond: () =>
+          jsonResponse({
+            ...DETAIL_PENDING_INVITATION,
+            initialAdminInvitation: { ...DETAIL_PENDING_INVITATION.initialAdminInvitation, status: 'REVOKED' },
+          }),
+      },
+    ])
+
+    renderPage()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Revogar' })).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'Revogar' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Revogar' }))
+
+    await waitFor(() => expect(screen.getByText('Convite revogado')).toBeInTheDocument())
   })
 })

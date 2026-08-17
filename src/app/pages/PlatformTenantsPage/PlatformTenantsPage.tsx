@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
+import { ROUTES } from '@/app/router/routes'
 import { CreateTenantDialog } from '@/features/platform/components/CreateTenantDialog/CreateTenantDialog'
 import { PlatformTenantsTable } from '@/features/platform/components/PlatformTenantsTable/PlatformTenantsTable'
 import { platformApi } from '@/features/platform/api/platformApi'
@@ -13,23 +15,36 @@ function errorMessageFrom(error: unknown): string {
   return 'Não foi possível concluir a operação. Tente novamente.'
 }
 
-/** Listagem/gestão de Tenants pela plataforma SaaS (ver ADR 0023) — cache TanStack Query sob a
- * chave `['platform', ...]`, nunca compartilhada com listas tenant-scoped como `['projects', ...]`. */
+/** Listagem/gestão de Tenants pela plataforma SaaS (ver ADR 0023/0024) — cache TanStack Query sob
+ * a chave `['platform', ...]`, nunca compartilhada com listas tenant-scoped como
+ * `['projects', ...]`. */
 export function PlatformTenantsPage() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [createOpen, setCreateOpen] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
 
   const createMutation = useMutation({
-    mutationFn: ({ name, slug }: { name: string; slug: string }) => platformApi.createTenant(name, slug),
-    onSuccess: () => {
+    mutationFn: ({ name, slug, adminEmail }: { name: string; slug: string; adminEmail: string }) =>
+      platformApi.createTenant(name, slug, adminEmail, idempotencyKey),
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['platform', 'tenants'] })
       queryClient.invalidateQueries({ queryKey: ['platform', 'dashboard'] })
       setCreateOpen(false)
       setCreateError(null)
+      navigate(ROUTES.platformTenantDetail(result.tenant.id), {
+        state: { justProvisioned: true, adminEmail: result.initialAdminInvitation.email, emailSent: result.initialAdminInvitation.emailSent },
+      })
     },
     onError: (error: unknown) => setCreateError(errorMessageFrom(error)),
   })
+
+  function openCreateDialog() {
+    setCreateError(null)
+    setIdempotencyKey(crypto.randomUUID())
+    setCreateOpen(true)
+  }
 
   return (
     <section className={styles.page}>
@@ -40,12 +55,7 @@ export function PlatformTenantsPage() {
         </div>
       </header>
 
-      <PlatformTenantsTable
-        onCreateTenant={() => {
-          setCreateError(null)
-          setCreateOpen(true)
-        }}
-      />
+      <PlatformTenantsTable onCreateTenant={openCreateDialog} />
 
       <CreateTenantDialog
         open={createOpen}

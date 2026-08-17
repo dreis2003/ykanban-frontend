@@ -4,6 +4,7 @@ import type {
   PlatformDashboard,
   PlatformTenant,
   PlatformTenantDetail,
+  ProvisioningResponse,
 } from '@/features/platform/types'
 import type { PageResponse } from '@/shared/types/pageResponse'
 
@@ -29,12 +30,25 @@ export const platformApi = {
     httpClient.get<PageResponse<PlatformTenant>>(`/platform/tenants?${buildListQuery(params)}`),
   getTenant: (tenantId: string) =>
     httpClient.get<PlatformTenantDetail>(`/platform/tenants/${tenantId}`),
-  createTenant: (name: string, slug: string) =>
-    httpClient.post<PlatformTenant>('/platform/tenants', { name, slug }),
+  /** {@code idempotencyKey} opcional (ver ADR 0024) — protege contra double-click/retry
+   * duplicando a empresa; gerado pelo chamador (ex.: `crypto.randomUUID()`) uma vez por tentativa
+   * de submit, reaproveitado entre retries da MESMA tentativa. */
+  createTenant: (name: string, slug: string, adminEmail: string, idempotencyKey?: string) =>
+    httpClient.post<ProvisioningResponse>(
+      '/platform/tenants',
+      { name, slug, adminEmail },
+      idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : undefined,
+    ),
   renameTenant: (tenantId: string, name: string) =>
     httpClient.patch<PlatformTenantDetail>(`/platform/tenants/${tenantId}`, { name }),
   suspendTenant: (tenantId: string) =>
     httpClient.post<PlatformTenantDetail>(`/platform/tenants/${tenantId}/suspend`),
   activateTenant: (tenantId: string) =>
     httpClient.post<PlatformTenantDetail>(`/platform/tenants/${tenantId}/activate`),
+  resendInitialAdminInvitation: (tenantId: string) =>
+    httpClient.post<PlatformTenantDetail>(`/platform/tenants/${tenantId}/initial-admin-invitation/resend`),
+  replaceInitialAdminInvitation: (tenantId: string, email: string) =>
+    httpClient.post<PlatformTenantDetail>(`/platform/tenants/${tenantId}/initial-admin-invitation/replace`, { email }),
+  revokeInitialAdminInvitation: (tenantId: string) =>
+    httpClient.post<PlatformTenantDetail>(`/platform/tenants/${tenantId}/initial-admin-invitation/revoke`),
 }

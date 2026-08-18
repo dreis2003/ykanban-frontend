@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { MainLayout } from '@/layouts/MainLayout/MainLayout'
 import { PlatformLayout } from '@/layouts/PlatformLayout/PlatformLayout'
 import { AcceptInvitationPage } from '@/app/pages/AcceptInvitationPage/AcceptInvitationPage'
+import { CheckoutSuccessPage } from '@/app/pages/CheckoutSuccessPage/CheckoutSuccessPage'
 import { LoginPage } from '@/app/pages/LoginPage/LoginPage'
 import { MembersPage } from '@/app/pages/MembersPage/MembersPage'
 import { NotFoundPage } from '@/app/pages/NotFoundPage/NotFoundPage'
@@ -14,6 +15,7 @@ import { ProjectDashboardPage } from '@/app/pages/ProjectDashboardPage/ProjectDa
 import { ProjectDetailPage } from '@/app/pages/ProjectDetailPage/ProjectDetailPage'
 import { ProjectsPage } from '@/app/pages/ProjectsPage/ProjectsPage'
 import { SelectOrganizationPage } from '@/app/pages/SelectOrganizationPage/SelectOrganizationPage'
+import { TenantSubscriptionPage } from '@/app/pages/TenantSubscriptionPage/TenantSubscriptionPage'
 import { RequireAuth } from '@/features/auth/RequireAuth'
 import { RequireAuthenticated } from '@/features/auth/RequireAuthenticated'
 import { RequirePlatformAdmin } from '@/features/auth/RequirePlatformAdmin'
@@ -48,6 +50,8 @@ export const router = createBrowserRouter([
       { path: ROUTES.home, element: <Navigate to={ROUTES.projects} replace /> },
       { path: ROUTES.projects, element: <ProjectsPage /> },
       { path: ROUTES.members, element: <MembersPage /> },
+      { path: ROUTES.subscription, element: <TenantSubscriptionPage /> },
+      { path: ROUTES.checkoutSuccess, element: <CheckoutSuccessPage /> },
       { path: '/projects/:projectId', element: <ProjectDetailPage /> },
       { path: '/projects/:projectId/cards/:cardId', element: <ProjectDetailPage /> },
       { path: '/projects/:projectId/dashboard', element: <ProjectDashboardPage /> },

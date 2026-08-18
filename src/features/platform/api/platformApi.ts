@@ -32,11 +32,12 @@ export const platformApi = {
     httpClient.get<PlatformTenantDetail>(`/platform/tenants/${tenantId}`),
   /** {@code idempotencyKey} opcional (ver ADR 0024) — protege contra double-click/retry
    * duplicando a empresa; gerado pelo chamador (ex.: `crypto.randomUUID()`) uma vez por tentativa
-   * de submit, reaproveitado entre retries da MESMA tentativa. */
-  createTenant: (name: string, slug: string, adminEmail: string, idempotencyKey?: string) =>
+   * de submit, reaproveitado entre retries da MESMA tentativa. {@code planId} é obrigatório desde
+   * o ADR 0026 — nenhuma empresa nasce sem Subscription. */
+  createTenant: (name: string, slug: string, adminEmail: string, planId: string, idempotencyKey?: string) =>
     httpClient.post<ProvisioningResponse>(
       '/platform/tenants',
-      { name, slug, adminEmail },
+      { name, slug, adminEmail, planId },
       idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : undefined,
     ),
   renameTenant: (tenantId: string, name: string) =>

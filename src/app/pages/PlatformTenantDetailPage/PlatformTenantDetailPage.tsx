@@ -5,6 +5,7 @@ import { ROUTES } from '@/app/router/routes'
 import { platformApi } from '@/features/platform/api/platformApi'
 import { ReplaceInitialAdminDialog } from '@/features/platform/components/ReplaceInitialAdminDialog/ReplaceInitialAdminDialog'
 import type { InitialAdminInvitationStatus, PlatformTenantDetail } from '@/features/platform/types'
+import { SubscriptionSection } from '@/features/subscriptions/components/SubscriptionSection/SubscriptionSection'
 import { ApiError } from '@/shared/api/apiError'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog/ConfirmDialog'
 import { StatusMessage } from '@/shared/components/StatusMessage/StatusMessage'
@@ -221,7 +222,7 @@ export function PlatformTenantDetailPage() {
               ) : null}
               <p className={styles.slug}>{tenant.slug}</p>
             </div>
-            <span className={styles.statusBadge} data-status={tenant.status}>
+            <span className={styles.statusBadge} data-status={tenant.status} data-testid="tenant-status-badge">
               {tenant.status === 'ACTIVE' ? 'Ativa' : 'Suspensa'}
             </span>
           </header>
@@ -246,6 +247,8 @@ export function PlatformTenantDetailPage() {
               <span className={styles.kpiValue}>{new Date(tenant.createdAt).toLocaleDateString('pt-BR')}</span>
             </div>
           </div>
+
+          <SubscriptionSection tenantId={tenant.id} />
 
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Administrador inicial</h2>

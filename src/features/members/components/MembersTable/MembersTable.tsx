@@ -170,7 +170,12 @@ export function MembersTable({ active }: Props) {
     enabled: active,
   })
 
-  const invalidateMembers = () => queryClient.invalidateQueries({ queryKey: ['members'] })
+  // Ativar/inativar/remover Membership muda o uso de MAX_MEMBERS (ver ADR 0026, item 265) — nunca
+  // deixa a UI mostrando "4/5" desatualizado depois de uma reativação, por exemplo.
+  const invalidateMembers = () => {
+    queryClient.invalidateQueries({ queryKey: ['members'] })
+    queryClient.invalidateQueries({ queryKey: ['entitlements'] })
+  }
 
   /** Role/Membership nunca vêm do JWT (ver ADR 0020) — uma mutação que o próprio usuário aplica
    * sobre si mesmo só reflete na UI (nav, permissões) depois de resincronizar /auth/me. Se a

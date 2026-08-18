@@ -1,5 +1,7 @@
 import { httpClient } from '@/shared/api/httpClient'
 import type {
+  AssignablePlan,
+  CreatePlanPriceValues,
   CreatePlanValues,
   FeatureKey,
   LimitKey,
@@ -7,6 +9,7 @@ import type {
   ListPlansParams,
   Plan,
   PlanDetail,
+  PlanPrice,
   UpdatePlanValues,
 } from '@/features/plans/types'
 import type { PageResponse } from '@/shared/types/pageResponse'
@@ -30,6 +33,7 @@ function buildListQuery(params: ListPlansParams): string {
 
 export const plansApi = {
   list: (params: ListPlansParams) => httpClient.get<PageResponse<Plan>>(`/platform/plans?${buildListQuery(params)}`),
+  assignable: () => httpClient.get<AssignablePlan[]>('/platform/plans/assignable'),
   getById: (planId: string) => httpClient.get<PlanDetail>(`/platform/plans/${planId}`),
   create: (values: CreatePlanValues) => httpClient.post<Plan>('/platform/plans', values),
   update: (planId: string, values: UpdatePlanValues) => httpClient.patch<Plan>(`/platform/plans/${planId}`, values),
@@ -41,4 +45,9 @@ export const plansApi = {
   deactivate: (planId: string) => httpClient.post<Plan>(`/platform/plans/${planId}/deactivate`),
   featureCatalog: () => httpClient.get<FeatureKey[]>('/platform/entitlements/features'),
   limitCatalog: () => httpClient.get<LimitKey[]>('/platform/entitlements/limits'),
+  listPrices: (planId: string) => httpClient.get<PlanPrice[]>(`/platform/plans/${planId}/prices`),
+  createPrice: (planId: string, values: CreatePlanPriceValues) =>
+    httpClient.post<PlanPrice>(`/platform/plans/${planId}/prices`, values),
+  deactivatePrice: (planId: string, planPriceId: string) =>
+    httpClient.post<PlanPrice>(`/platform/plans/${planId}/prices/${planPriceId}/deactivate`),
 }

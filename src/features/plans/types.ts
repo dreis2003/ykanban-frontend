@@ -41,6 +41,32 @@ export interface PlanDetail extends Plan {
   limits: PlanLimitSlot[]
 }
 
+/** Espelho de {@code BillingInterval}/{@code PlanPriceStatus} (ver ADR 0027) — {@code amountMinor}
+ * é sempre a menor unidade da moeda (nunca decimal), formatar com {@code formatMoney} antes de
+ * exibir. Preço nunca é excluído fisicamente — só {@code deactivate}. */
+export type BillingInterval = 'MONTHLY' | 'YEARLY'
+
+export type PlanPriceStatus = 'ACTIVE' | 'INACTIVE'
+
+export interface PlanPrice {
+  id: string
+  planId: string
+  billingInterval: BillingInterval
+  currency: string
+  amountMinor: number
+  status: PlanPriceStatus
+  displayOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreatePlanPriceValues {
+  billingInterval: BillingInterval
+  currency: string
+  amountMinor: number
+  displayOrder: number
+}
+
 export type PlanSortOption = 'displayOrder,name,asc' | 'name,asc' | 'name,desc' | 'code,asc' | 'createdAt,desc'
 
 export interface ListPlansParams {
@@ -49,6 +75,14 @@ export interface ListPlansParams {
   page?: number
   size?: number
   sort?: PlanSortOption
+}
+
+/** Plano selecionável para uma nova/alterada Subscription — sempre COMMERCIAL + ACTIVE (ver ADR
+ * 0026). Nunca inclui Plans SYSTEM (ex.: Legacy Internal). */
+export interface AssignablePlan {
+  id: string
+  code: string
+  name: string
 }
 
 export interface CreatePlanValues {

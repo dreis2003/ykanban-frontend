@@ -39,6 +39,15 @@ function mockFetchRouter(handlers: FetchHandler[]) {
   )
 }
 
+const ASSIGNABLE_PLAN = { id: 'plan1', code: 'PROFESSIONAL', name: 'Professional' }
+
+function assignablePlansHandler(): FetchHandler {
+  return {
+    match: (url, method) => method === 'GET' && url.includes('/platform/plans/assignable'),
+    respond: () => jsonResponse([ASSIGNABLE_PLAN]),
+  }
+}
+
 const ACME_TENANT = {
   id: 't1',
   name: 'Acme',
@@ -82,6 +91,7 @@ describe('PlatformTenantsPage', () => {
     const user = userEvent.setup()
     mockFetchRouter([
       { match: (url, method) => method === 'GET' && url.includes('/platform/tenants?'), respond: () => jsonResponse(pageOf([])) },
+      assignablePlansHandler(),
       {
         match: (url, method) => method === 'POST' && url.endsWith('/platform/tenants'),
         respond: () =>
@@ -117,6 +127,7 @@ describe('PlatformTenantsPage', () => {
     const user = userEvent.setup()
     mockFetchRouter([
       { match: (url, method) => method === 'GET' && url.includes('/platform/tenants?'), respond: () => jsonResponse(pageOf([ACME_TENANT])) },
+      assignablePlansHandler(),
       {
         match: (url, method) => method === 'POST' && url.endsWith('/platform/tenants'),
         respond: () => jsonResponse({ title: 'Conflito', status: 409, detail: 'Já existe uma organização com este slug.' }, 409),

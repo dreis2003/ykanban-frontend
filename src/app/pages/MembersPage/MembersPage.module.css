@@ -35,6 +35,18 @@
   line-height: var(--line-height-tight);
 }
 
+.capacityHint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}
+
+.capacityHint[data-state='AT_LIMIT'],
+.capacityHint[data-state='OVER_LIMIT'] {
+  color: var(--color-warning);
+  font-weight: var(--font-weight-medium);
+}
+
 .subtitle {
   color: var(--color-text-muted);
   margin-top: var(--space-1);
@@ -58,6 +70,15 @@
 
 .newInviteButton:hover {
   background-color: var(--color-accent-hover);
+}
+
+.newInviteButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.newInviteButton:disabled:hover {
+  background-color: var(--color-accent);
 }
 
 .inviteNotice {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider, MemoryRouter } from 'react-router-dom'
 import { MainLayout } from '@/layouts/MainLayout/MainLayout'
@@ -7,6 +7,27 @@ import { ROUTES } from '@/app/router/routes'
 import { AuthProvider } from '@/features/auth/AuthProvider'
 import { AuthContext, type AuthContextValue } from '@/features/auth/AuthContext'
 import { authSession } from '@/shared/api/authSession'
+import type { Entitlements } from '@/features/entitlements/types'
+
+function jsonResponse(body: unknown): Response {
+  return {
+    ok: true,
+    status: 200,
+    headers: new Headers({ 'content-type': 'application/json' }),
+    json: () => Promise.resolve(body),
+  } as Response
+}
+
+function stubEntitlements(entitlements: Entitlements) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((input: RequestInfo | URL) =>
+      input.toString().includes('/entitlements')
+        ? Promise.resolve(jsonResponse(entitlements))
+        : Promise.reject(new Error(`fetch inesperado: ${input.toString()}`)),
+    ),
+  )
+}
 
 function authValue(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
   return {
@@ -137,5 +158,53 @@ describe('MainLayout', () => {
 
     expect(screen.getByRole('banner')).toHaveTextContent('YKanban')
     expect(screen.getByText('conteúdo da página')).toBeInTheDocument()
+  })
+
+  it('mostra aviso não bloqueante quando PAST_DUE ainda está no período de tolerância', async () => {
+    stubEntitlements({
+      plan: { id: 'p1', name: 'Professional', code: 'PROFESSIONAL' },
+      subscriptionStatus: 'PAST_DUE',
+      accessMode: 'READ_WRITE',
+      accessReason: 'PAST_DUE_GRACE',
+      limits: {},
+      features: {},
+    })
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AuthContext.Provider value={authValue()}>
+          <MemoryRouter>
+            <MainLayout />
+          </MemoryRouter>
+        </AuthContext.Provider>
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('pagamento'))
+    expect(screen.getByRole('status')).toHaveAttribute('data-reason', 'PAST_DUE_GRACE')
+  })
+
+  it('bloqueia escrita quando o período de tolerância do PAST_DUE expirou', async () => {
+    stubEntitlements({
+      plan: { id: 'p1', name: 'Professional', code: 'PROFESSIONAL' },
+      subscriptionStatus: 'PAST_DUE',
+      accessMode: 'READ_ONLY',
+      accessReason: 'PAST_DUE_GRACE_EXPIRED',
+      limits: {},
+      features: {},
+    })
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AuthContext.Provider value={authValue()}>
+          <MemoryRouter>
+            <MainLayout />
+          </MemoryRouter>
+        </AuthContext.Provider>
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('tolerância encerrou'))
+    expect(screen.getByRole('status')).toHaveAttribute('data-reason', 'PAST_DUE_GRACE_EXPIRED')
   })
 })

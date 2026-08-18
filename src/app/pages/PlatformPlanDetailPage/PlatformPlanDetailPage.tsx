@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { ROUTES } from '@/app/router/routes'
+import { billingCatalogApi } from '@/features/plans/api/billingCatalogApi'
 import { plansApi } from '@/features/plans/api/plansApi'
+import { PlanPricesSection } from '@/features/plans/components/PlanPricesSection/PlanPricesSection'
 import { FEATURE_LABELS, LIMIT_LABELS } from '@/features/plans/constants'
 import type { LimitMode, PlanDetail, PlanFeatureSlot, PlanLimitSlot } from '@/features/plans/types'
 import { ApiError } from '@/shared/api/apiError'
@@ -149,6 +151,21 @@ export function PlatformPlanDetailPage() {
     queryKey: ['platform', 'plans', planId],
     queryFn: () => plansApi.getById(planId as string),
     enabled: Boolean(planId),
+  })
+
+  const { data: stripeStatus } = useQuery({
+    queryKey: ['platform', 'plans', planId, 'billing', 'stripe'],
+    queryFn: () => billingCatalogApi.productStatus(planId as string),
+    enabled: Boolean(planId),
+  })
+
+  const publishPlanMutation = useMutation({
+    mutationFn: () => billingCatalogApi.publishPlan(planId as string),
+    onSuccess: (status) => {
+      queryClient.setQueryData(['platform', 'plans', planId, 'billing', 'stripe'], status)
+      setActionError(null)
+    },
+    onError: (error: unknown) => setActionError(errorMessageFrom(error)),
   })
 
   const applyDetail = (updated: PlanDetail) => {
@@ -367,6 +384,28 @@ export function PlatformPlanDetailPage() {
                 />
               ))}
             </div>
+          </section>
+
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Stripe</h2>
+            <div className={styles.featureRow}>
+              <span className={styles.featureName}>
+                {stripeStatus?.synced ? `Sincronizado — ${stripeStatus.externalProductId}` : 'Não publicado'}
+              </span>
+              <button
+                type="button"
+                className={styles.editButton}
+                onClick={() => publishPlanMutation.mutate()}
+                disabled={publishPlanMutation.isPending}
+              >
+                {publishPlanMutation.isPending ? 'Publicando…' : stripeStatus?.synced ? 'Tentar novamente' : 'Publicar na Stripe'}
+              </button>
+            </div>
+          </section>
+
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Preços</h2>
+            <PlanPricesSection planId={plan.id} />
           </section>
 
           <section className={styles.section}>

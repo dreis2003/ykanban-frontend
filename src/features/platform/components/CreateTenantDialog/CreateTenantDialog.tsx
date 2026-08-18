@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
+import { ROUTES } from '@/app/router/routes'
+import type { AssignablePlan } from '@/features/plans/types'
 import styles from './CreateTenantDialog.module.css'
 
 interface Props {
   open: boolean
   isSubmitting: boolean
   errorMessage: string | null
-  onSubmit: (values: { name: string; slug: string; adminEmail: string }) => void
+  plans: AssignablePlan[]
+  isLoadingPlans: boolean
+  onSubmit: (values: { name: string; slug: string; adminEmail: string; planId: string }) => void
   onClose: () => void
 }
 
@@ -28,12 +33,13 @@ function slugify(value: string): string {
  * <p>Provisionamento completo (ver ADR 0024): nunca pede Role (primeiro administrador é sempre
  * ADMIN) nem senha (quem aceita o convite define a própria conta).
  */
-export function CreateTenantDialog({ open, isSubmitting, errorMessage, onSubmit, onClose }: Props) {
+export function CreateTenantDialog({ open, isSubmitting, errorMessage, plans, isLoadingPlans, onSubmit, onClose }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [slugTouched, setSlugTouched] = useState(false)
   const [adminEmail, setAdminEmail] = useState('')
+  const [planId, setPlanId] = useState('')
   const [fieldError, setFieldError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -45,6 +51,7 @@ export function CreateTenantDialog({ open, isSubmitting, errorMessage, onSubmit,
       setSlug('')
       setSlugTouched(false)
       setAdminEmail('')
+      setPlanId('')
       setFieldError(null)
       dialog.showModal()
     }
@@ -52,6 +59,11 @@ export function CreateTenantDialog({ open, isSubmitting, errorMessage, onSubmit,
       dialog.close()
     }
   }, [open])
+
+  // Derivado no render (nunca em efeito, ver react-hooks/set-state-in-effect): assim que a lista
+  // carrega, o primeiro plano comercial disponível já aparece pré-selecionado sem round-trip extra
+  // de render — `planId` só passa a mandar depois que o usuário escolhe algo explicitamente.
+  const selectedPlanId = planId || plans[0]?.id || ''
 
   function handleNameChange(value: string) {
     setName(value)
@@ -65,8 +77,8 @@ export function CreateTenantDialog({ open, isSubmitting, errorMessage, onSubmit,
     const trimmedName = name.trim()
     const trimmedSlug = slug.trim()
     const trimmedEmail = adminEmail.trim()
-    if (!trimmedName || !trimmedSlug || !trimmedEmail) {
-      setFieldError('Nome, slug e e-mail do administrador são obrigatórios.')
+    if (!trimmedName || !trimmedSlug || !trimmedEmail || !selectedPlanId) {
+      setFieldError('Nome, slug, e-mail do administrador e plano são obrigatórios.')
       return
     }
     if (!EMAIL_PATTERN.test(trimmedEmail)) {
@@ -74,7 +86,7 @@ export function CreateTenantDialog({ open, isSubmitting, errorMessage, onSubmit,
       return
     }
     setFieldError(null)
-    onSubmit({ name: trimmedName, slug: trimmedSlug, adminEmail: trimmedEmail })
+    onSubmit({ name: trimmedName, slug: trimmedSlug, adminEmail: trimmedEmail, planId: selectedPlanId })
   }
 
   return (
@@ -132,6 +144,33 @@ export function CreateTenantDialog({ open, isSubmitting, errorMessage, onSubmit,
           </p>
         </div>
 
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="tenant-plan">
+            Plano
+          </label>
+          {!isLoadingPlans && plans.length === 0 ? (
+            <p className={styles.hint} role="alert">
+              Cadastre e ative pelo menos um plano antes de criar uma empresa.{' '}
+              <Link to={ROUTES.platformPlans}>Ir para Planos</Link>
+            </p>
+          ) : (
+            <select
+              id="tenant-plan"
+              className={styles.input}
+              value={selectedPlanId}
+              onChange={(event) => setPlanId(event.target.value)}
+              disabled={isSubmitting || isLoadingPlans}
+            >
+              {isLoadingPlans ? <option value="">Carregando planos…</option> : null}
+              {plans.map((plan) => (
+                <option key={plan.id} value={plan.id}>
+                  {plan.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
         {fieldError ? (
           <p className={styles.fieldError} role="alert">
             {fieldError}
@@ -148,7 +187,7 @@ export function CreateTenantDialog({ open, isSubmitting, errorMessage, onSubmit,
           <button type="button" className={styles.cancel} onClick={onClose} disabled={isSubmitting}>
             Cancelar
           </button>
-          <button type="submit" className={styles.submit} disabled={isSubmitting}>
+          <button type="submit" className={styles.submit} disabled={isSubmitting || plans.length === 0}>
             {isSubmitting ? 'Criando empresa…' : 'Criar empresa e enviar convite'}
           </button>
         </div>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
+import { entitlementsApi } from '@/features/entitlements/api/entitlementsApi'
 import { projectsApi } from '@/features/projects/api/projectsApi'
 import { ProjectCard } from '@/features/projects/components/ProjectCard/ProjectCard'
 import { ProjectFormDialog } from '@/features/projects/components/ProjectFormDialog/ProjectFormDialog'
@@ -51,10 +52,18 @@ function errorMessageFrom(error: unknown): string {
 type FormState = { mode: 'create' } | { mode: 'edit'; project: Project }
 
 export function ProjectsPage() {
-  const { membershipRole } = useAuth()
+  const { membershipRole, activeTenant } = useAuth()
   const canManage = membershipRole === 'ADMIN' || membershipRole === 'PROJECT_MANAGER'
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
+
+  const { data: entitlements } = useQuery({
+    queryKey: ['entitlements', activeTenant?.id],
+    queryFn: entitlementsApi.current,
+    enabled: Boolean(activeTenant),
+  })
+  const projectLimit = entitlements?.limits?.MAX_PROJECTS
+  const canCreateProject = !projectLimit || projectLimit.state === 'AVAILABLE' || projectLimit.state === 'UNLIMITED'
 
   // A URL é a fonte da verdade para status/página/ordenação — permite refresh, back/forward e
   // compartilhar o link com os filtros aplicados (busca é sincronizada via debounce, ver abaixo).
@@ -162,7 +171,12 @@ export function ProjectsPage() {
   const isLoading = isListLoading || isSummaryLoading
   const isError = isListError || isSummaryError
 
-  const invalidateProjects = () => queryClient.invalidateQueries({ queryKey: ['projects'] })
+  // Criar/arquivar/reativar Project muda o uso de MAX_PROJECTS (ver ADR 0026, item 265) — nunca
+  // deixa a UI mostrando capacidade desatualizada depois dessas ações.
+  const invalidateProjects = () => {
+    queryClient.invalidateQueries({ queryKey: ['projects'] })
+    queryClient.invalidateQueries({ queryKey: ['entitlements'] })
+  }
 
   const createMutation = useMutation({
     mutationFn: projectsApi.create,
@@ -246,9 +260,20 @@ export function ProjectsPage() {
         <div>
           <h1 className={styles.title}>Projetos</h1>
           <p className={styles.subtitle}>Gerencie os projetos da Yakuza Studio</p>
+          {projectLimit && projectLimit.mode !== 'UNLIMITED' ? (
+            <p className={styles.capacityHint} data-state={projectLimit.state}>
+              {projectLimit.usage} de {projectLimit.value} projetos do plano em uso
+            </p>
+          ) : null}
         </div>
         {canManage ? (
-          <button type="button" className={styles.newProjectButton} onClick={openCreateForm}>
+          <button
+            type="button"
+            className={styles.newProjectButton}
+            onClick={openCreateForm}
+            disabled={!canCreateProject}
+            title={canCreateProject ? undefined : 'Limite de projetos do plano atingido.'}
+          >
             <Plus size={16} aria-hidden="true" />
             Novo Projeto
           </button>
@@ -319,7 +344,13 @@ export function ProjectsPage() {
             }
             action={
               canManage ? (
-                <button type="button" className={styles.newProjectButton} onClick={openCreateForm}>
+                <button
+                  type="button"
+                  className={styles.newProjectButton}
+                  onClick={openCreateForm}
+                  disabled={!canCreateProject}
+                  title={canCreateProject ? undefined : 'Limite de projetos do plano atingido.'}
+                >
                   <Plus size={16} aria-hidden="true" />
                   Criar projeto
                 </button>

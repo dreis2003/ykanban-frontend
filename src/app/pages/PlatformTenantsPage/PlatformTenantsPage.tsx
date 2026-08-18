@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/app/router/routes'
 import { CreateTenantDialog } from '@/features/platform/components/CreateTenantDialog/CreateTenantDialog'
 import { PlatformTenantsTable } from '@/features/platform/components/PlatformTenantsTable/PlatformTenantsTable'
 import { platformApi } from '@/features/platform/api/platformApi'
+import { plansApi } from '@/features/plans/api/plansApi'
 import { ApiError } from '@/shared/api/apiError'
 import styles from './PlatformTenantsPage.module.css'
 
@@ -25,9 +26,15 @@ export function PlatformTenantsPage() {
   const [createError, setCreateError] = useState<string | null>(null)
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
 
+  const { data: assignablePlans, isLoading: isLoadingPlans } = useQuery({
+    queryKey: ['platform', 'plans', 'assignable'],
+    queryFn: plansApi.assignable,
+    enabled: createOpen,
+  })
+
   const createMutation = useMutation({
-    mutationFn: ({ name, slug, adminEmail }: { name: string; slug: string; adminEmail: string }) =>
-      platformApi.createTenant(name, slug, adminEmail, idempotencyKey),
+    mutationFn: ({ name, slug, adminEmail, planId }: { name: string; slug: string; adminEmail: string; planId: string }) =>
+      platformApi.createTenant(name, slug, adminEmail, planId, idempotencyKey),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['platform', 'tenants'] })
       queryClient.invalidateQueries({ queryKey: ['platform', 'dashboard'] })
@@ -61,6 +68,8 @@ export function PlatformTenantsPage() {
         open={createOpen}
         isSubmitting={createMutation.isPending}
         errorMessage={createError}
+        plans={assignablePlans ?? []}
+        isLoadingPlans={isLoadingPlans}
         onSubmit={(values) => createMutation.mutate(values)}
         onClose={() => setCreateOpen(false)}
       />

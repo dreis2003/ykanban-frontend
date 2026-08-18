@@ -24,6 +24,18 @@
   margin-top: var(--space-1);
 }
 
+.capacityHint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}
+
+.capacityHint[data-state='AT_LIMIT'],
+.capacityHint[data-state='OVER_LIMIT'] {
+  color: var(--color-warning);
+  font-weight: var(--font-weight-medium);
+}
+
 .newProjectButton {
   display: inline-flex;
   align-items: center;
@@ -42,6 +54,15 @@
 
 .newProjectButton:hover {
   background-color: var(--color-accent-hover);
+}
+
+.newProjectButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.newProjectButton:disabled:hover {
+  background-color: var(--color-accent);
 }
 
 .toolbar {

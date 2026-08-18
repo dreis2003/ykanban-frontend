@@ -126,13 +126,13 @@ describe('PlatformTenantDetailPage', () => {
     ])
 
     renderPage()
-    await waitFor(() => expect(screen.getByText('Ativa')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTestId('tenant-status-badge')).toHaveTextContent('Ativa'))
 
     await user.click(screen.getByRole('button', { name: 'Suspender organização' }))
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: 'Suspender' }))
 
-    await waitFor(() => expect(screen.getByText('Suspensa')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTestId('tenant-status-badge')).toHaveTextContent('Suspensa'))
   })
 
   it('mostra o convite de administrador inicial pendente com ações', async () => {

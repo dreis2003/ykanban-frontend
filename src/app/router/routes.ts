@@ -5,6 +5,8 @@ export const ROUTES = {
   selectOrganization: '/select-organization',
   projects: '/projects',
   members: '/settings/members',
+  subscription: '/settings/subscription',
+  checkoutSuccess: '/settings/subscription/checkout/success',
   platformDashboard: '/platform',
   platformTenants: '/platform/tenants',
   platformTenantDetail: (tenantId: string) => `/platform/tenants/${tenantId}`,

@@ -158,6 +158,27 @@
   overflow-y: auto;
 }
 
+.readOnlyBanner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-warning);
+  background-color: var(--color-warning-bg);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.readOnlyBanner[data-reason='TENANT_SUSPENDED'] {
+  color: var(--color-danger);
+  background-color: var(--color-danger-bg);
+}
+
+.readOnlyBannerTitle {
+  font-weight: var(--font-weight-medium);
+}
+
 @media (min-width: 768px) {
   .main {
     padding: var(--space-8) var(--space-6);

@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Plus } from 'lucide-react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { ROUTES } from '@/app/router/routes'
 import { useAuth } from '@/features/auth/AuthContext'
 import type { MembershipRole } from '@/features/auth/types'
+import { entitlementsApi } from '@/features/entitlements/api/entitlementsApi'
 import { invitationsApi } from '@/features/invitations/api/invitationsApi'
 import { InviteMemberDialog } from '@/features/invitations/components/InviteMemberDialog/InviteMemberDialog'
 import { InvitationsPanel } from '@/features/invitations/components/InvitationsPanel/InvitationsPanel'
@@ -23,9 +24,17 @@ function errorMessageFrom(error: unknown): string {
 }
 
 export function MembersPage() {
-  const { membershipRole } = useAuth()
+  const { membershipRole, activeTenant } = useAuth()
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
+
+  const { data: entitlements } = useQuery({
+    queryKey: ['entitlements', activeTenant?.id],
+    queryFn: entitlementsApi.current,
+    enabled: Boolean(activeTenant),
+  })
+  const memberLimit = entitlements?.limits?.MAX_MEMBERS
+  const canInvite = !memberLimit || memberLimit.state === 'AVAILABLE' || memberLimit.state === 'UNLIMITED'
 
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteInitialValues, setInviteInitialValues] = useState<{ email: string; role: MembershipRole } | null>(null)
@@ -56,6 +65,9 @@ export function MembersPage() {
     mutationFn: invitationsApi.invite,
     onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ['invitations'] })
+      // Convite reserva vaga de MAX_MEMBERS (ver ADR 0026, item 265) — nunca deixa a UI mostrando
+      // capacidade desatualizada depois de um novo convite.
+      queryClient.invalidateQueries({ queryKey: ['entitlements'] })
       setInviteOpen(false)
       setInviteError(null)
       setInviteNotice(
@@ -99,8 +111,19 @@ export function MembersPage() {
         <div>
           <h1 className={styles.title}>Membros</h1>
           <p className={styles.subtitle}>Gerencie papéis, acesso e convites da organização</p>
+          {memberLimit && memberLimit.mode !== 'UNLIMITED' ? (
+            <p className={styles.capacityHint} data-state={memberLimit.state}>
+              {memberLimit.usage} de {memberLimit.value} vagas reservadas (usuários ativos + convites pendentes)
+            </p>
+          ) : null}
         </div>
-        <button type="button" className={styles.newInviteButton} onClick={openInviteDialog}>
+        <button
+          type="button"
+          className={styles.newInviteButton}
+          onClick={openInviteDialog}
+          disabled={!canInvite}
+          title={canInvite ? undefined : 'Limite de usuários do plano atingido.'}
+        >
           <Plus size={16} aria-hidden="true" />
           Convidar usuário
         </button>

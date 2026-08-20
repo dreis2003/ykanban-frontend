@@ -13,6 +13,9 @@ export interface ProblemDetails {
   detail?: string
   instance?: string
   errors?: ValidationError[]
+  /** Propriedade extra adicionada via `ProblemDetail#setProperty` (ver ADR 0029/Prompt 30) — hoje
+   * só usada por `ACCOUNT_ALREADY_EXISTS_LOGIN_REQUIRED` no fluxo de Account Setup. */
+  code?: string
 }
 
 export function isProblemDetails(value: unknown): value is ProblemDetails {

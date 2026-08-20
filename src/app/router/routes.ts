@@ -2,6 +2,13 @@
 export const ROUTES = {
   home: '/',
   login: '/login',
+  // Fluxo comercial público payment-first (ver ADR 0029/Prompt 30) — entrada principal de
+  // aquisição do YKanban, nunca `/signup` (que exigiria conta antes do Checkout).
+  subscribe: '/subscribe',
+  subscriptionSuccess: '/subscription/success',
+  accountSetup: '/account-setup',
+  terms: '/terms',
+  privacy: '/privacy',
   selectOrganization: '/select-organization',
   projects: '/projects',
   members: '/settings/members',

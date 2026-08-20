@@ -1,0 +1,33 @@
+.page {
+  width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.page h1 {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.page h2 {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  margin-top: var(--space-3);
+}
+
+.page p {
+  color: var(--color-text-muted);
+  line-height: var(--line-height-relaxed, 1.6);
+}
+
+.draftNotice {
+  font-size: var(--font-size-sm);
+  color: var(--color-warning);
+  background-color: var(--color-warning-bg);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}

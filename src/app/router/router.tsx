@@ -1,8 +1,14 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { MainLayout } from '@/layouts/MainLayout/MainLayout'
 import { PlatformLayout } from '@/layouts/PlatformLayout/PlatformLayout'
+import { PublicLayout } from '@/layouts/PublicLayout/PublicLayout'
 import { AcceptInvitationPage } from '@/app/pages/AcceptInvitationPage/AcceptInvitationPage'
+import { AccountSetupPage } from '@/app/pages/AccountSetupPage/AccountSetupPage'
 import { CheckoutSuccessPage } from '@/app/pages/CheckoutSuccessPage/CheckoutSuccessPage'
+import { PrivacyPage } from '@/app/pages/PrivacyPage/PrivacyPage'
+import { SubscribePage } from '@/app/pages/SubscribePage/SubscribePage'
+import { SubscriptionSuccessPage } from '@/app/pages/SubscriptionSuccessPage/SubscriptionSuccessPage'
+import { TermsPage } from '@/app/pages/TermsPage/TermsPage'
 import { LoginPage } from '@/app/pages/LoginPage/LoginPage'
 import { MembersPage } from '@/app/pages/MembersPage/MembersPage'
 import { NotFoundPage } from '@/app/pages/NotFoundPage/NotFoundPage'
@@ -32,6 +38,20 @@ import { ROUTES } from '@/app/router/routes'
 export const router = createBrowserRouter([
   { path: ROUTES.login, element: <LoginPage /> },
   { path: '/invitations/:token', element: <AcceptInvitationPage /> },
+  // Área comercial pública (ver ADR 0029/Prompt 30) — entrada principal de aquisição do YKanban,
+  // nunca exige conta/login antes do Checkout. `/account-setup` também funciona autenticado (User
+  // já existente assumindo uma nova empresa, ver PARTE V) — `PublicLayout` não bloqueia isso, só
+  // não exige identidade.
+  {
+    element: <PublicLayout />,
+    children: [
+      { path: ROUTES.subscribe, element: <SubscribePage /> },
+      { path: ROUTES.subscriptionSuccess, element: <SubscriptionSuccessPage /> },
+      { path: ROUTES.accountSetup, element: <AccountSetupPage /> },
+      { path: ROUTES.terms, element: <TermsPage /> },
+      { path: ROUTES.privacy, element: <PrivacyPage /> },
+    ],
+  },
   {
     path: ROUTES.selectOrganization,
     element: (

@@ -1,5 +1,5 @@
 import { useCallback, useState, type FormEvent } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Link, Navigate, useLocation } from 'react-router-dom'
 import { ROUTES } from '@/app/router/routes'
 import { useAuth } from '@/features/auth/AuthContext'
 import { ApiError } from '@/shared/api/apiError'
@@ -103,6 +103,10 @@ export function LoginPage() {
             {isSubmitting ? 'Entrando…' : 'Entrar'}
           </button>
         </form>
+
+        <Link to={ROUTES.forgotPassword} className={styles.forgotPasswordLink}>
+          Esqueci minha senha
+        </Link>
       </div>
     </div>
   )

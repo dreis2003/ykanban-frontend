@@ -50,6 +50,9 @@ export function PlatformLayout() {
         {user ? (
           <div className={styles.session}>
             <span className={styles.userName}>{user.name}</span>
+            <Link to={ROUTES.account} className={styles.exit}>
+              Minha conta
+            </Link>
             <Link to={ROUTES.projects} className={styles.exit}>
               Voltar ao YKanban
             </Link>

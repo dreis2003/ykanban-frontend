@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/app/router/routes'
 import { useAuth } from '@/features/auth/AuthContext'
 import type { MembershipRole } from '@/features/auth/types'
@@ -147,6 +147,9 @@ export function MainLayout() {
               <span className={styles.userName}>{user.name}</span>
               <span className={styles.userRole}>{membershipRole ? ROLE_LABELS[membershipRole] : ''}</span>
             </div>
+            <Link to={ROUTES.account} className={styles.switchOrg}>
+              Minha conta
+            </Link>
             <button type="button" className={styles.switchOrg} onClick={handleSwitchOrganization}>
               Trocar organização
             </button>

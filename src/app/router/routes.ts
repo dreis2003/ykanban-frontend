@@ -9,6 +9,13 @@ export const ROUTES = {
   accountSetup: '/account-setup',
   terms: '/terms',
   privacy: '/privacy',
+  // "Minha Conta" (ver ADR 0030/Prompt 31) — GLOBAL ao User, fora das árvores de MainLayout/
+  // PlatformLayout (acessível a partir das duas, ver item 275). Esqueci-senha/reset/confirmação
+  // de troca de e-mail são públicas, dentro de PublicLayout.
+  account: '/account',
+  forgotPassword: '/forgot-password',
+  resetPassword: '/reset-password',
+  confirmEmailChange: '/confirm-email-change',
   selectOrganization: '/select-organization',
   projects: '/projects',
   members: '/settings/members',

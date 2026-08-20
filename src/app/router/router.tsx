@@ -3,9 +3,13 @@ import { MainLayout } from '@/layouts/MainLayout/MainLayout'
 import { PlatformLayout } from '@/layouts/PlatformLayout/PlatformLayout'
 import { PublicLayout } from '@/layouts/PublicLayout/PublicLayout'
 import { AcceptInvitationPage } from '@/app/pages/AcceptInvitationPage/AcceptInvitationPage'
+import { AccountPage } from '@/app/pages/AccountPage/AccountPage'
 import { AccountSetupPage } from '@/app/pages/AccountSetupPage/AccountSetupPage'
 import { CheckoutSuccessPage } from '@/app/pages/CheckoutSuccessPage/CheckoutSuccessPage'
+import { ConfirmEmailChangePage } from '@/app/pages/ConfirmEmailChangePage/ConfirmEmailChangePage'
+import { ForgotPasswordPage } from '@/app/pages/ForgotPasswordPage/ForgotPasswordPage'
 import { PrivacyPage } from '@/app/pages/PrivacyPage/PrivacyPage'
+import { ResetPasswordPage } from '@/app/pages/ResetPasswordPage/ResetPasswordPage'
 import { SubscribePage } from '@/app/pages/SubscribePage/SubscribePage'
 import { SubscriptionSuccessPage } from '@/app/pages/SubscriptionSuccessPage/SubscriptionSuccessPage'
 import { TermsPage } from '@/app/pages/TermsPage/TermsPage'
@@ -50,6 +54,9 @@ export const router = createBrowserRouter([
       { path: ROUTES.accountSetup, element: <AccountSetupPage /> },
       { path: ROUTES.terms, element: <TermsPage /> },
       { path: ROUTES.privacy, element: <PrivacyPage /> },
+      { path: ROUTES.forgotPassword, element: <ForgotPasswordPage /> },
+      { path: ROUTES.resetPassword, element: <ResetPasswordPage /> },
+      { path: ROUTES.confirmEmailChange, element: <ConfirmEmailChangePage /> },
     ],
   },
   {
@@ -57,6 +64,18 @@ export const router = createBrowserRouter([
     element: (
       <RequireAuthenticated>
         <SelectOrganizationPage />
+      </RequireAuthenticated>
+    ),
+  },
+  {
+    // "Minha Conta" (ver ADR 0030/Prompt 31) — GLOBAL ao User, deliberadamente fora das árvores
+    // de MainLayout/PlatformLayout: precisa funcionar independente de Tenant ativo/selecionado,
+    // acessível a partir das duas áreas (ver item 275). Mesmo tratamento de RequireAuthenticated
+    // usado por /select-organization — só exige identidade, nunca Tenant.
+    path: ROUTES.account,
+    element: (
+      <RequireAuthenticated>
+        <AccountPage />
       </RequireAuthenticated>
     ),
   },

@@ -8,13 +8,11 @@ export interface YCommunicationIntegration {
 }
 
 export interface SaveIntegrationPayload {
-  baseUrl: string
   apiKey?: string | undefined
   active: boolean
 }
 
 export interface TestConnectionPayload {
-  baseUrl?: string | undefined
   apiKey?: string | undefined
 }
 

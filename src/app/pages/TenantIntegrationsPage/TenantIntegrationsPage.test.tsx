@@ -52,7 +52,7 @@ describe('TenantIntegrationsPage', () => {
     )
   }
 
-  it('renders integration form with existing configuration', async () => {
+  it('renders integration form with trusted read-only base URL', async () => {
     mockFetchRouter([
       {
         match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
@@ -70,7 +70,10 @@ describe('TenantIntegrationsPage', () => {
 
     renderPage()
 
-    expect(await screen.findByDisplayValue('http://localhost:8080')).toBeInTheDocument()
+    const urlInput = await screen.findByDisplayValue('http://localhost:8080')
+    expect(urlInput).toBeInTheDocument()
+    expect(urlInput).toHaveAttribute('readOnly')
+    expect(urlInput).toBeDisabled()
     expect(screen.getByText('YCommunication Hub')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Salvar Configurações/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Testar Conexão/i })).toBeInTheDocument()
@@ -114,7 +117,7 @@ describe('TenantIntegrationsPage', () => {
     expect(screen.getByText(/MESSAGES_SEND, MESSAGES_READ/)).toBeInTheDocument()
   })
 
-  it('saves integration changes and clears sensitive input', async () => {
+  it('saves integration changes with write-only key without exposing baseUrl to tenant payload', async () => {
     const user = userEvent.setup()
 
     let savedPayload: unknown = null
@@ -122,7 +125,7 @@ describe('TenantIntegrationsPage', () => {
     mockFetchRouter([
       {
         match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
-        respond: () => jsonResponse({ configured: false, active: false }),
+        respond: () => jsonResponse({ configured: false, active: false, baseUrl: 'http://localhost:8080' }),
       },
       {
         match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'PUT',
@@ -131,7 +134,7 @@ describe('TenantIntegrationsPage', () => {
           return jsonResponse({
             configured: true,
             id: 'int-2',
-            baseUrl: 'https://comms.yakuza.dev',
+            baseUrl: 'http://localhost:8080',
             maskedApiKey: 'ycom_***',
             active: true,
           })
@@ -141,10 +144,7 @@ describe('TenantIntegrationsPage', () => {
 
     renderPage()
 
-    const urlInput = await screen.findByLabelText(/Base URL/i)
-    const keyInput = screen.getByLabelText(/API Key/i)
-
-    await user.type(urlInput, 'https://comms.yakuza.dev')
+    const keyInput = await screen.findByLabelText(/API Key/i)
     await user.type(keyInput, 'ycom_secret_new_key_123')
 
     const saveBtn = screen.getByRole('button', { name: /Salvar Configurações/i })
@@ -155,7 +155,6 @@ describe('TenantIntegrationsPage', () => {
     })
 
     expect(savedPayload).toEqual({
-      baseUrl: 'https://comms.yakuza.dev',
       apiKey: 'ycom_secret_new_key_123',
       active: true,
     })

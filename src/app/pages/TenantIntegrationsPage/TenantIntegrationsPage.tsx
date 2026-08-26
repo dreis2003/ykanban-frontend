@@ -9,7 +9,6 @@ import styles from './TenantIntegrationsPage.module.css'
 export function TenantIntegrationsPage() {
   const queryClient = useQueryClient()
 
-  const [baseUrlDraft, setBaseUrlDraft] = useState<string | null>(null)
   const [activeDraft, setActiveDraft] = useState<boolean | null>(null)
   const [apiKey, setApiKey] = useState('')
   const [testResult, setTestResult] = useState<TestConnectionResponse | null>(null)
@@ -20,7 +19,6 @@ export function TenantIntegrationsPage() {
     queryFn: integrationsApi.getIntegration,
   })
 
-  const baseUrl = baseUrlDraft ?? integration?.baseUrl ?? ''
   const active = activeDraft ?? (integration?.configured ? integration.active : true)
 
   const saveMutation = useMutation({
@@ -29,7 +27,6 @@ export function TenantIntegrationsPage() {
       queryClient.setQueryData(['ycommunication-integration'], data)
       setSavedSuccess(true)
       setApiKey('')
-      setBaseUrlDraft(null)
       setActiveDraft(null)
       setTimeout(() => setSavedSuccess(false), 4000)
     },
@@ -46,7 +43,6 @@ export function TenantIntegrationsPage() {
     e.preventDefault()
     setSavedSuccess(false)
     saveMutation.mutate({
-      baseUrl,
       apiKey: apiKey.trim() || undefined,
       active,
     })
@@ -55,7 +51,6 @@ export function TenantIntegrationsPage() {
   const handleTest = () => {
     setTestResult(null)
     testMutation.mutate({
-      baseUrl: baseUrl.trim() || undefined,
       apiKey: apiKey.trim() || undefined,
     })
   }
@@ -86,20 +81,19 @@ export function TenantIntegrationsPage() {
 
           <form className={styles.form} onSubmit={handleSave}>
             <div className={styles.field}>
-              <label htmlFor="base-url" className={styles.label}>
-                Base URL do YCommunication
+              <label htmlFor="base-url-readonly" className={styles.label}>
+                Servidor YCommunication Conectado (Configuração Confiável do Ambiente)
               </label>
               <input
-                id="base-url"
-                type="url"
-                required
+                id="base-url-readonly"
+                type="text"
+                readOnly
+                disabled
                 className={styles.input}
-                placeholder="http://localhost:8080 ou https://communication.empresa.com.br"
-                value={baseUrl}
-                onChange={(e) => setBaseUrlDraft(e.target.value)}
+                value={integration?.baseUrl || 'http://localhost:8080'}
               />
               <span className={styles.helperText}>
-                Endereço base do servidor YCommunication. O SDK adicionará automaticamente as rotas de Client API.
+                O host de destino é gerenciado exclusivamente pela infraestrutura do sistema (Anti-SSRF).
               </span>
             </div>
 
@@ -154,7 +148,7 @@ export function TenantIntegrationsPage() {
               <button
                 type="submit"
                 className={styles.btnPrimary}
-                disabled={saveMutation.isPending || !baseUrl}
+                disabled={saveMutation.isPending || (!apiKey && !integration?.configured)}
               >
                 {saveMutation.isPending ? 'Salvando...' : 'Salvar Configurações'}
               </button>
@@ -163,7 +157,7 @@ export function TenantIntegrationsPage() {
                 type="button"
                 className={styles.btnSecondary}
                 onClick={handleTest}
-                disabled={testMutation.isPending || (!baseUrl && !integration?.configured)}
+                disabled={testMutation.isPending || (!apiKey && !integration?.configured)}
               >
                 {testMutation.isPending ? 'Testando...' : 'Testar Conexão'}
               </button>

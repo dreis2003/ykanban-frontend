@@ -131,6 +131,14 @@ export function MainLayout() {
               Assinatura
             </NavLink>
           ) : null}
+          {membershipRole === 'ADMIN' ? (
+            <NavLink
+              to={ROUTES.integrations}
+              className={({ isActive }) => (isActive ? styles.navLinkActive : styles.navLink)}
+            >
+              Integrações
+            </NavLink>
+          ) : null}
           {platformRoles.includes('PLATFORM_ADMIN') ? (
             <NavLink
               to={ROUTES.platformDashboard}

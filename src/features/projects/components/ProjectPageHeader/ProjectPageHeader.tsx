@@ -6,11 +6,11 @@ import styles from './ProjectPageHeader.module.css'
 
 interface Props {
   project: Project
-  active: 'kanban' | 'dashboard'
+  active: 'kanban' | 'dashboard' | 'notifications'
 }
 
-/** Compartilhado entre `ProjectDetailPage` (Kanban) e `ProjectDashboardPage` — mesma identidade
- * visual do Project e a mesma navegação entre as duas seções em ambas as telas (ver ADR 0018). */
+/** Compartilhado entre `ProjectDetailPage` (Kanban), `ProjectDashboardPage` e `ProjectNotificationsPage` — mesma identidade
+ * visual do Project e a mesma navegação entre as seções em todas as telas. */
 export function ProjectPageHeader({ project, active }: Props) {
   return (
     <>
@@ -40,6 +40,13 @@ export function ProjectPageHeader({ project, active }: Props) {
           aria-current={active === 'dashboard' ? 'page' : undefined}
         >
           Dashboard
+        </Link>
+        <Link
+          to={ROUTES.projectNotifications(project.id)}
+          className={styles.tab}
+          aria-current={active === 'notifications' ? 'page' : undefined}
+        >
+          Notificações
         </Link>
       </nav>
     </>

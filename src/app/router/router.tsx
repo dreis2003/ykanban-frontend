@@ -23,8 +23,10 @@ import { PlatformTenantDetailPage } from '@/app/pages/PlatformTenantDetailPage/P
 import { PlatformTenantsPage } from '@/app/pages/PlatformTenantsPage/PlatformTenantsPage'
 import { ProjectDashboardPage } from '@/app/pages/ProjectDashboardPage/ProjectDashboardPage'
 import { ProjectDetailPage } from '@/app/pages/ProjectDetailPage/ProjectDetailPage'
+import { ProjectNotificationsPage } from '@/app/pages/ProjectNotificationsPage/ProjectNotificationsPage'
 import { ProjectsPage } from '@/app/pages/ProjectsPage/ProjectsPage'
 import { SelectOrganizationPage } from '@/app/pages/SelectOrganizationPage/SelectOrganizationPage'
+import { TenantIntegrationsPage } from '@/app/pages/TenantIntegrationsPage/TenantIntegrationsPage'
 import { TenantSubscriptionPage } from '@/app/pages/TenantSubscriptionPage/TenantSubscriptionPage'
 import { RequireAuth } from '@/features/auth/RequireAuth'
 import { RequireAuthenticated } from '@/features/auth/RequireAuthenticated'
@@ -90,10 +92,12 @@ export const router = createBrowserRouter([
       { path: ROUTES.projects, element: <ProjectsPage /> },
       { path: ROUTES.members, element: <MembersPage /> },
       { path: ROUTES.subscription, element: <TenantSubscriptionPage /> },
+      { path: ROUTES.integrations, element: <TenantIntegrationsPage /> },
       { path: ROUTES.checkoutSuccess, element: <CheckoutSuccessPage /> },
       { path: '/projects/:projectId', element: <ProjectDetailPage /> },
       { path: '/projects/:projectId/cards/:cardId', element: <ProjectDetailPage /> },
       { path: '/projects/:projectId/dashboard', element: <ProjectDashboardPage /> },
+      { path: '/projects/:projectId/notifications', element: <ProjectNotificationsPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

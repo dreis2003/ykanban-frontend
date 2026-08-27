@@ -167,7 +167,19 @@ Alias de import: `@/*` aponta para `src/*`.
   Label em cada Card, então a edição precisa propagar para todo lugar que já tenha esse snapshot em
   cache.
 
+- A seção "Delivery Receipts" (YCOM-016) na página de Integrações do Tenant mostra a Callback URL
+  (somente leitura, com botão de copiar), os statuses suportados (`SENT`, `DELIVERED`, `READ`,
+  `FAILED`, `DEAD_LETTER`) e o estado do signing secret. O signing secret é **gerado pelo
+  YCommunication** e **colado** aqui pelo usuário — o campo nunca é populado a partir do GET e é
+  limpo assim que o save é confirmado, seguindo o mesmo padrão write-only já usado para a API Key.
+  A seção só aparece habilitada depois que a integração YCommunication (API Key) já estiver
+  configurada.
+
 ## Pendências / próxima etapa
 
+- Exibir o "Status remoto" (DELIVERED/READ/FAILED/DEAD_LETTER) por notificação individual junto ao
+  "Envio ao Hub" (YCOM-016 item 61) — não implementado nesta etapa porque o backend ainda não expõe
+  um endpoint que devolva o remote status por notificação/outbox individual; a UI atual cobre apenas
+  a configuração (Callback URL + signing secret) na página de Integrações do Tenant.
 - Responsável (Assignee) dos Cards (Prompt 12).
 - Autorização por role em nível de projeto (hoje é global — infraestrutura pronta via `AuthUser.role`).

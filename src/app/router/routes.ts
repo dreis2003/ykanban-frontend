@@ -20,6 +20,7 @@ export const ROUTES = {
   projects: '/projects',
   members: '/settings/members',
   subscription: '/settings/subscription',
+  integrations: '/settings/integrations',
   checkoutSuccess: '/settings/subscription/checkout/success',
   platformDashboard: '/platform',
   platformTenants: '/platform/tenants',
@@ -29,5 +30,6 @@ export const ROUTES = {
   acceptInvitation: (token: string) => `/invitations/${token}`,
   projectDetail: (id: string) => `/projects/${id}`,
   projectDashboard: (id: string) => `/projects/${id}/dashboard`,
+  projectNotifications: (id: string) => `/projects/${id}/notifications`,
   cardDetail: (projectId: string, cardId: string) => `/projects/${projectId}/cards/${cardId}`,
 } as const

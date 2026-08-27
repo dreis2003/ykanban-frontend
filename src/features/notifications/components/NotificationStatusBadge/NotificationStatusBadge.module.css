@@ -1,0 +1,45 @@
+.badge {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15em 0.6em;
+  border-radius: var(--radius-full);
+  color: var(--color-text-muted);
+  background-color: var(--color-bg-sunken);
+  white-space: nowrap;
+}
+
+.badge[data-kind='dispatch'][data-status='DISPATCHED'] {
+  color: var(--color-success);
+  background-color: var(--color-success-bg);
+}
+
+.badge[data-kind='dispatch'][data-status='FAILED'],
+.badge[data-kind='dispatch'][data-status='DEAD_LETTER'] {
+  color: var(--color-danger);
+  background-color: var(--color-danger-bg);
+}
+
+.badge[data-kind='dispatch'][data-status='PENDING'],
+.badge[data-kind='dispatch'][data-status='PROCESSING'] {
+  color: var(--color-warning);
+  background-color: var(--color-warning-bg);
+}
+
+.badge[data-kind='remote'][data-status='DELIVERED'],
+.badge[data-kind='remote'][data-status='READ'] {
+  color: var(--color-success);
+  background-color: var(--color-success-bg);
+}
+
+.badge[data-kind='remote'][data-status='SENT'] {
+  color: var(--color-warning);
+  background-color: var(--color-warning-bg);
+}
+
+.badge[data-kind='remote'][data-status='FAILED'],
+.badge[data-kind='remote'][data-status='DEAD_LETTER'] {
+  color: var(--color-danger);
+  background-color: var(--color-danger-bg);
+}

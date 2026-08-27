@@ -58,3 +58,36 @@ export interface SaveDestinationPayload {
   events: NotificationEvent[]
   active: boolean
 }
+
+export type TemplateVariableType = 'STRING' | 'NUMBER' | 'BOOLEAN'
+
+export interface NotificationTemplateVariable {
+  path: string
+  type: TemplateVariableType
+  required: boolean
+  description?: string | null
+}
+
+export interface NotificationTemplateCatalogItem {
+  code: string
+  name: string
+  description?: string | null
+  channel: CommunicationChannel
+  version: number
+  variables: NotificationTemplateVariable[]
+}
+
+export interface ProjectNotificationEventTemplate {
+  id: string
+  projectId: string
+  eventType: NotificationEvent
+  channel: CommunicationChannel
+  templateCode: string
+  updatedAt: string
+}
+
+export interface SaveProjectNotificationEventTemplatePayload {
+  eventType: NotificationEvent
+  channel: CommunicationChannel
+  templateCode: string
+}

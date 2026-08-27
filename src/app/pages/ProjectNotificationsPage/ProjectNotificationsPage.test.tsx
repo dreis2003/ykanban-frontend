@@ -50,7 +50,9 @@ function destinationsHandler(items: unknown[] = []): FetchHandler {
 
 function projectHandler(): FetchHandler {
   return {
-    match: (url, method) => url.includes('/projects/proj-1') && !url.includes('/notifications') && method === 'GET',
+    // Só a chamada "GET o Project em si" (sem nenhum subrecurso depois do id) — .includes('/notifications')
+    // não bastava para excluir /notification-templates (não contém a substring "/notifications").
+    match: (url, method) => url.replace(/\?.*$/, '').endsWith('/projects/proj-1') && method === 'GET',
     respond: () => jsonResponse(PROJECT_RESPONSE),
   }
 }
@@ -67,6 +69,26 @@ function notificationDetailHandler(id: string, detail: unknown): FetchHandler {
     match: (url, method) => url.includes(`/notifications/${id}`) && method === 'GET',
     respond: () => jsonResponse(detail),
   }
+}
+
+function templateCatalogHandler(items: unknown[] = []): FetchHandler {
+  return {
+    match: (url, method) => url.includes('/integrations/ycommunication/templates') && method === 'GET',
+    respond: () => jsonResponse(items),
+  }
+}
+
+function projectEventTemplatesHandler(items: unknown[] = []): FetchHandler {
+  return {
+    match: (url, method) => url.includes('/notification-templates') && method === 'GET',
+    respond: () => jsonResponse(items),
+  }
+}
+
+/** Handlers padrão (catálogo/config vazios) para toda `mockFetchRouter` desta suíte que não testa
+ * diretamente a seção de templates — evita fetch não mockado quebrando os outros testes. */
+function defaultTemplateHandlers(): FetchHandler[] {
+  return [templateCatalogHandler([]), projectEventTemplatesHandler([])]
 }
 
 function authValue(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
@@ -131,6 +153,7 @@ describe('ProjectNotificationsPage', () => {
 
   it('renders project header and destination list', async () => {
     mockFetchRouter([
+      ...defaultTemplateHandlers(),
       destinationsHandler([
         {
           id: 'dest-1',
@@ -161,6 +184,7 @@ describe('ProjectNotificationsPage', () => {
     let createdPayload: unknown = null
 
     mockFetchRouter([
+      ...defaultTemplateHandlers(),
       destinationsHandler([]),
       {
         match: (url, method) => url.includes('/notification-destinations') && method === 'POST',
@@ -212,6 +236,7 @@ describe('ProjectNotificationsPage', () => {
       })
 
       mockFetchRouter([
+        ...defaultTemplateHandlers(),
         destinationsHandler([]),
         projectHandler(),
         {
@@ -233,7 +258,7 @@ describe('ProjectNotificationsPage', () => {
     })
 
     it('shows the empty state when there are no notifications', async () => {
-      mockFetchRouter([destinationsHandler([]), projectHandler(), notificationsListHandler([])])
+      mockFetchRouter([...defaultTemplateHandlers(), destinationsHandler([]), projectHandler(), notificationsListHandler([])])
 
       renderPage()
 
@@ -242,6 +267,7 @@ describe('ProjectNotificationsPage', () => {
 
     it('shows an error state without leaking stale data on API failure', async () => {
       mockFetchRouter([
+        ...defaultTemplateHandlers(),
         destinationsHandler([]),
         projectHandler(),
         {
@@ -258,6 +284,7 @@ describe('ProjectNotificationsPage', () => {
 
     it('renders the list with distinct dispatch and remote status labels, including a diverging case', async () => {
       mockFetchRouter([
+        ...defaultTemplateHandlers(),
         destinationsHandler([]),
         projectHandler(),
         notificationsListHandler([
@@ -281,6 +308,7 @@ describe('ProjectNotificationsPage', () => {
 
     it('shows "Aguardando atualização" (never "Falhou") when remoteStatus is null', async () => {
       mockFetchRouter([
+        ...defaultTemplateHandlers(),
         destinationsHandler([]),
         projectHandler(),
         notificationsListHandler([{ ...NOTIFICATION_SENT, id: 'notif-3', remoteStatus: null, remoteStatusUpdatedAt: null }]),
@@ -294,6 +322,7 @@ describe('ProjectNotificationsPage', () => {
 
     it('falls back to the raw value for an unknown status without breaking the UI', async () => {
       mockFetchRouter([
+        ...defaultTemplateHandlers(),
         destinationsHandler([]),
         projectHandler(),
         notificationsListHandler([{ ...NOTIFICATION_SENT, id: 'notif-4', remoteStatus: 'UNKNOWN_NEW_STATUS' }]),
@@ -308,6 +337,7 @@ describe('ProjectNotificationsPage', () => {
     it('opens a detail drawer with history timeline showing a redrive lifecycle', async () => {
       const user = userEvent.setup()
       mockFetchRouter([
+        ...defaultTemplateHandlers(),
         destinationsHandler([]),
         projectHandler(),
         notificationsListHandler([NOTIFICATION_SENT]),
@@ -348,6 +378,7 @@ describe('ProjectNotificationsPage', () => {
       })
 
       mockFetchRouter([
+        ...defaultTemplateHandlers(),
         destinationsHandler([]),
         projectHandler(),
         notificationsListHandler([NOTIFICATION_SENT]),
@@ -373,6 +404,7 @@ describe('ProjectNotificationsPage', () => {
     it('closes the drawer and does not leak data when the active tenant changes', async () => {
       const user = userEvent.setup()
       mockFetchRouter([
+        ...defaultTemplateHandlers(),
         destinationsHandler([]),
         projectHandler(),
         notificationsListHandler([NOTIFICATION_SENT]),
@@ -406,6 +438,230 @@ describe('ProjectNotificationsPage', () => {
       await waitFor(() => {
         expect(screen.queryByRole('dialog', { name: 'Detalhe da notificação' })).not.toBeInTheDocument()
       })
+    })
+  })
+
+  describe('notification template configuration', () => {
+    const CATALOG_ITEM = {
+      code: 'YK_CARD_COMPLETED',
+      name: 'Card concluído',
+      description: 'Notifica conclusão de um card',
+      channel: 'TELEGRAM',
+      version: 3,
+      variables: [
+        { path: 'projectName', type: 'STRING', required: true, description: null },
+        { path: 'cardKey', type: 'STRING', required: true, description: null },
+      ],
+    }
+
+    const MAPPING = {
+      id: 'tpl-map-1',
+      projectId: 'proj-1',
+      eventType: 'CARD_COMPLETED',
+      channel: 'TELEGRAM',
+      templateCode: 'YK_CARD_COMPLETED',
+      updatedAt: '2026-08-27T12:00:00Z',
+    }
+
+    it('shows a loading state while fetching the template catalog', async () => {
+      let resolveCatalog: (response: Response) => void = () => {}
+      const catalogPromise = new Promise<Response>((resolve) => {
+        resolveCatalog = resolve
+      })
+
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        projectEventTemplatesHandler([]),
+        {
+          match: (url, method) => url.includes('/integrations/ycommunication/templates') && method === 'GET',
+          respond: () => catalogPromise,
+        },
+      ])
+
+      renderPage()
+
+      await screen.findByRole('heading', { name: 'YKanban Core' })
+      expect(screen.getByText('Carregando catálogo de templates...')).toBeInTheDocument()
+
+      resolveCatalog(jsonResponse([]))
+
+      await waitFor(() => {
+        expect(screen.getByText('Nenhum template disponível.')).toBeInTheDocument()
+      })
+    })
+
+    it('shows the empty state when the template catalog is empty', async () => {
+      mockFetchRouter([destinationsHandler([]), projectHandler(), notificationsListHandler([]), ...defaultTemplateHandlers()])
+
+      renderPage()
+
+      expect(await screen.findByText('Nenhum template disponível.')).toBeInTheDocument()
+    })
+
+    it('shows an error state when the template catalog fails to load', async () => {
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        projectEventTemplatesHandler([]),
+        {
+          match: (url, method) => url.includes('/integrations/ycommunication/templates') && method === 'GET',
+          respond: () => jsonResponse({ title: 'Erro interno', status: 500 }, 500),
+        },
+      ])
+
+      renderPage()
+
+      expect(await screen.findByText('Falha ao carregar o catálogo de templates.')).toBeInTheDocument()
+    })
+
+    it('lets the user select a template and shows its read-only variable contract', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        templateCatalogHandler([CATALOG_ITEM]),
+        projectEventTemplatesHandler([]),
+      ])
+
+      renderPage()
+
+      await user.selectOptions(await screen.findByLabelText('Canal'), 'TELEGRAM')
+      await user.selectOptions(screen.getByLabelText('Template'), 'YK_CARD_COMPLETED')
+
+      const contract = await screen.findByTestId('template-variable-contract')
+      expect(within(contract).getByText('projectName')).toBeInTheDocument()
+      expect(within(contract).getAllByText(/obrigatório/)).toHaveLength(2)
+    })
+
+    it('saves a template mapping using templateCode, never the internal UUID (which does not exist)', async () => {
+      const user = userEvent.setup()
+      let savedPayload: unknown = null
+
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        templateCatalogHandler([CATALOG_ITEM]),
+        {
+          match: (url, method) => url.endsWith('/projects/proj-1/notification-templates') && method === 'GET',
+          respond: () => jsonResponse([]),
+        },
+        {
+          match: (url, method) => url.endsWith('/projects/proj-1/notification-templates') && method === 'PUT',
+          respond: (init) => {
+            savedPayload = JSON.parse(init?.body as string)
+            return jsonResponse(MAPPING)
+          },
+        },
+      ])
+
+      renderPage()
+
+      await user.selectOptions(await screen.findByLabelText('Canal'), 'TELEGRAM')
+      await user.selectOptions(screen.getByLabelText('Template'), 'YK_CARD_COMPLETED')
+      await user.click(screen.getByRole('button', { name: 'Salvar' }))
+
+      await waitFor(() => {
+        expect(savedPayload).toEqual({
+          eventType: 'CARD_CREATED',
+          channel: 'TELEGRAM',
+          templateCode: 'YK_CARD_COMPLETED',
+        })
+      })
+    })
+
+    it('lists configured mappings and removes one', async () => {
+      const user = userEvent.setup()
+      let deleteCalled = false
+
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        templateCatalogHandler([CATALOG_ITEM]),
+        {
+          match: (url, method) => url.includes('/notification-templates') && method === 'GET',
+          respond: () => jsonResponse([MAPPING]),
+        },
+        {
+          match: (url, method) => url.includes('/notification-templates') && method === 'DELETE',
+          respond: () => {
+            deleteCalled = true
+            return jsonResponse(null, 204)
+          },
+        },
+      ])
+
+      renderPage()
+
+      const table = await screen.findByTestId('template-mappings-table')
+      expect(within(table).getByText('YK_CARD_COMPLETED')).toBeInTheDocument()
+      expect(within(table).getByText('Conclusão em Produção')).toBeInTheDocument()
+
+      await user.click(within(table).getByRole('button', { name: 'Remover' }))
+
+      await waitFor(() => {
+        expect(deleteCalled).toBe(true)
+      })
+    })
+
+    it('never leaks the previous tenant/project template config on tenant switch', async () => {
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        templateCatalogHandler([CATALOG_ITEM]),
+        projectEventTemplatesHandler([MAPPING]),
+      ])
+
+      const { rerender, queryClient } = renderPage('proj-1', authValue())
+
+      const table = await screen.findByTestId('template-mappings-table')
+      expect(within(table).getByText('YK_CARD_COMPLETED')).toBeInTheDocument()
+
+      const otherTenantAuth = authValue({ activeTenant: { id: 't2', name: 'Outra Empresa', slug: 'outra', status: 'ACTIVE' } })
+      mockFetchRouter([destinationsHandler([]), projectHandler(), notificationsListHandler([]), ...defaultTemplateHandlers()])
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <AuthContext.Provider value={otherTenantAuth}>
+            <MemoryRouter initialEntries={['/projects/proj-1/notifications']}>
+              <Routes>
+                <Route path="/projects/:projectId/notifications" element={<ProjectNotificationsPage />} />
+              </Routes>
+            </MemoryRouter>
+          </AuthContext.Provider>
+        </QueryClientProvider>,
+      )
+
+      await waitFor(() => {
+        expect(screen.queryByText('YK_CARD_COMPLETED')).not.toBeInTheDocument()
+      })
+    })
+
+    it('never sends the YCommunication API Key or any secret header from the browser', async () => {
+      let observedHeaders: Record<string, string> = {}
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        {
+          match: (url, method) => url.includes('/integrations/ycommunication/templates') && method === 'GET',
+          respond: (init) => {
+            observedHeaders = Object.fromEntries(new Headers(init?.headers).entries())
+            return jsonResponse([CATALOG_ITEM])
+          },
+        },
+        projectEventTemplatesHandler([]),
+      ])
+
+      renderPage()
+
+      await screen.findByLabelText('Canal')
+      expect(Object.keys(observedHeaders).some((h) => h.toLowerCase().includes('api-key'))).toBe(false)
     })
   })
 })

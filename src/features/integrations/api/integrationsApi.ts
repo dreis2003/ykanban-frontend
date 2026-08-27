@@ -1,9 +1,12 @@
 import { httpClient } from '@/shared/api/httpClient'
 import type {
   DeliveryReceiptConfig,
+  NotificationTemplateCatalogItem,
   ProjectNotificationDestination,
+  ProjectNotificationEventTemplate,
   SaveDestinationPayload,
   SaveIntegrationPayload,
+  SaveProjectNotificationEventTemplatePayload,
   SetDeliveryReceiptSigningSecretPayload,
   TestConnectionPayload,
   TestConnectionResponse,
@@ -43,4 +46,18 @@ export const integrationsApi = {
 
   deleteDestination: (projectId: string, destinationId: string) =>
     httpClient.delete<void>(`/projects/${projectId}/notification-destinations/${destinationId}`),
+
+  listTemplateCatalog: () =>
+    httpClient.get<NotificationTemplateCatalogItem[]>('/tenants/current/integrations/ycommunication/templates'),
+
+  listProjectEventTemplates: (projectId: string) =>
+    httpClient.get<ProjectNotificationEventTemplate[]>(`/projects/${projectId}/notification-templates`),
+
+  saveProjectEventTemplate: (projectId: string, payload: SaveProjectNotificationEventTemplatePayload) =>
+    httpClient.put<ProjectNotificationEventTemplate>(`/projects/${projectId}/notification-templates`, payload),
+
+  deleteProjectEventTemplate: (projectId: string, eventType: string, channel: string) =>
+    httpClient.delete<void>(
+      `/projects/${projectId}/notification-templates?eventType=${encodeURIComponent(eventType)}&channel=${encodeURIComponent(channel)}`
+    ),
 }

@@ -1,0 +1,160 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sectionTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.description {
+  font-size: 0.875rem;
+  color: var(--color-muted-foreground, #71717a);
+  margin: 0.25rem 0 0;
+}
+
+.form {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3, 0.75rem);
+  flex-wrap: wrap;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 180px;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-foreground, #09090b);
+}
+
+.select {
+  padding: 0.5rem 0.625rem;
+  font-size: 0.875rem;
+  border-radius: var(--radius-md, 0.375rem);
+  border: 1px solid var(--color-border, #e4e4e7);
+  background: var(--color-background, #ffffff);
+}
+
+.btnPrimary {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--radius-md, 0.375rem);
+  background: var(--color-primary, #18181b);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnDanger {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: var(--radius-md, 0.375rem);
+  background: transparent;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  cursor: pointer;
+}
+
+.variableContract {
+  padding: var(--space-3, 0.75rem);
+  background: var(--color-secondary, #f4f4f5);
+  border-radius: var(--radius-md, 0.375rem);
+}
+
+.variableContractTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}
+
+.variableList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.variableItem {
+  font-size: 0.8125rem;
+  color: var(--color-foreground, #09090b);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-muted-foreground, #71717a);
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--color-border, #e4e4e7);
+}
+
+.table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--color-border, #e4e4e7);
+}
+
+.channelBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  background: var(--color-secondary, #f4f4f5);
+  color: var(--color-secondary-foreground, #18181b);
+}
+
+.channelBadge[data-channel='EMAIL'] {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.channelBadge[data-channel='TELEGRAM'] {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.channelBadge[data-channel='WHATSAPP'] {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.channelBadge[data-channel='WEBHOOK'] {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+.emptyMappings {
+  font-size: 0.875rem;
+  color: var(--color-muted-foreground, #71717a);
+}

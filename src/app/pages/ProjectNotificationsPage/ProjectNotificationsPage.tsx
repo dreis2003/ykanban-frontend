@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ROUTES } from '@/app/router/routes'
 import { useAuth } from '@/features/auth/AuthContext'
 import { integrationsApi } from '@/features/integrations/api/integrationsApi'
+import { NotificationTemplateConfig } from '@/features/integrations/components/NotificationTemplateConfig/NotificationTemplateConfig'
 import type {
   CommunicationChannel,
   NotificationEvent,
@@ -228,6 +229,8 @@ export function ProjectNotificationsPage() {
           Nenhum destino de notificação configurado para este projeto. Clique em "Adicionar Destino" para começar.
         </div>
       )}
+
+      <NotificationTemplateConfig projectId={projectId as string} />
 
       <div className={styles.sectionHeader}>
         <div>

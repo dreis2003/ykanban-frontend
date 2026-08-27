@@ -2,17 +2,26 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { ROUTES } from '@/app/router/routes'
+import { useAuth } from '@/features/auth/AuthContext'
 import { integrationsApi } from '@/features/integrations/api/integrationsApi'
 import type {
   CommunicationChannel,
   NotificationEvent,
   ProjectNotificationDestination,
 } from '@/features/integrations/types'
+import { notificationsApi } from '@/features/notifications/api/notificationsApi'
+import { NotificationDetailDrawer } from '@/features/notifications/components/NotificationDetailDrawer/NotificationDetailDrawer'
+import { NotificationList } from '@/features/notifications/components/NotificationList/NotificationList'
+import type { NotificationSummary } from '@/features/notifications/types'
 import { projectsApi } from '@/features/projects/api/projectsApi'
 import { ProjectPageHeader } from '@/features/projects/components/ProjectPageHeader/ProjectPageHeader'
 import { StatusBadge } from '@/shared/components/StatusBadge/StatusBadge'
 import { StatusMessage } from '@/shared/components/StatusMessage/StatusMessage'
 import styles from './ProjectNotificationsPage.module.css'
+
+const CHANNEL_FILTER_OPTIONS: CommunicationChannel[] = ['EMAIL', 'TELEGRAM', 'WHATSAPP', 'WEBHOOK']
+const DISPATCH_STATUS_FILTER_OPTIONS = ['PENDING', 'DISPATCHED', 'FAILED', 'DEAD_LETTER']
+const REMOTE_STATUS_FILTER_OPTIONS = ['SENT', 'DELIVERED', 'READ', 'FAILED', 'DEAD_LETTER']
 
 const EVENT_LABELS: Record<NotificationEvent, string> = {
   CARD_CREATED: 'Criação de Card',
@@ -23,12 +32,62 @@ const EVENT_LABELS: Record<NotificationEvent, string> = {
 export function ProjectNotificationsPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const queryClient = useQueryClient()
+  const { activeTenant } = useAuth()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [channel, setChannel] = useState<CommunicationChannel>('EMAIL')
   const [recipient, setRecipient] = useState('')
   const [events, setEvents] = useState<NotificationEvent[]>(['CARD_CREATED', 'CARD_MOVED', 'CARD_COMPLETED'])
   const [active, setActive] = useState(true)
+
+  const [historyPage, setHistoryPage] = useState(0)
+  const [channelFilter, setChannelFilter] = useState('')
+  const [dispatchStatusFilter, setDispatchStatusFilter] = useState('')
+  const [remoteStatusFilter, setRemoteStatusFilter] = useState('')
+  const [selectedNotificationId, setSelectedNotificationId] = useState<string | null>(null)
+
+  // Ao trocar de Tenant, nunca deixar lista/detail do Tenant anterior visíveis — ajuste de estado
+  // durante o render (mesmo padrão de `lastUrlSearch` em ProjectsPage), não em useEffect.
+  const [lastTenantId, setLastTenantId] = useState(activeTenant?.id)
+  if (lastTenantId !== activeTenant?.id) {
+    setLastTenantId(activeTenant?.id)
+    setSelectedNotificationId(null)
+    setHistoryPage(0)
+  }
+
+  const notificationsQuery = useQuery({
+    queryKey: [
+      'project-notifications',
+      activeTenant?.id,
+      projectId,
+      { page: historyPage, channel: channelFilter, dispatchStatus: dispatchStatusFilter, remoteStatus: remoteStatusFilter },
+    ],
+    queryFn: () =>
+      notificationsApi.list(projectId as string, {
+        page: historyPage,
+        ...(channelFilter ? { channel: channelFilter } : {}),
+        ...(dispatchStatusFilter ? { dispatchStatus: dispatchStatusFilter } : {}),
+        ...(remoteStatusFilter ? { remoteStatus: remoteStatusFilter } : {}),
+      }),
+    enabled: Boolean(projectId) && Boolean(activeTenant?.id),
+  })
+
+  const notificationDetailQuery = useQuery({
+    queryKey: ['project-notification-detail', activeTenant?.id, projectId, selectedNotificationId],
+    queryFn: () => notificationsApi.getDetail(projectId as string, selectedNotificationId as string),
+    enabled: Boolean(projectId) && Boolean(activeTenant?.id) && Boolean(selectedNotificationId),
+  })
+
+  function handleFilterChange(patch: Partial<{ channel: string; dispatchStatus: string; remoteStatus: string }>) {
+    if (patch.channel !== undefined) setChannelFilter(patch.channel)
+    if (patch.dispatchStatus !== undefined) setDispatchStatusFilter(patch.dispatchStatus)
+    if (patch.remoteStatus !== undefined) setRemoteStatusFilter(patch.remoteStatus)
+    setHistoryPage(0)
+  }
+
+  function handleSelectNotification(notification: NotificationSummary) {
+    setSelectedNotificationId(notification.id)
+  }
 
   const { data: project, isLoading: projectLoading } = useQuery({
     queryKey: ['projects', projectId],
@@ -169,6 +228,86 @@ export function ProjectNotificationsPage() {
           Nenhum destino de notificação configurado para este projeto. Clique em "Adicionar Destino" para começar.
         </div>
       )}
+
+      <div className={styles.sectionHeader}>
+        <div>
+          <h2 className={styles.sectionTitle}>Notificações Enviadas</h2>
+          <p className={styles.breadcrumbCurrent}>
+            Envio ao Hub reflete se o YCommunication aceitou a mensagem; status remoto vem exclusivamente dos
+            Delivery Receipts recebidos — os dois podem divergir.
+          </p>
+        </div>
+      </div>
+
+      <div className={styles.filterBar} data-testid="notifications-filter-bar">
+        <select
+          aria-label="Filtrar por canal"
+          value={channelFilter}
+          onChange={(e) => handleFilterChange({ channel: e.target.value })}
+        >
+          <option value="">Todos os canais</option>
+          {CHANNEL_FILTER_OPTIONS.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Filtrar por envio ao Hub"
+          value={dispatchStatusFilter}
+          onChange={(e) => handleFilterChange({ dispatchStatus: e.target.value })}
+        >
+          <option value="">Qualquer envio ao Hub</option>
+          {DISPATCH_STATUS_FILTER_OPTIONS.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Filtrar por status remoto"
+          value={remoteStatusFilter}
+          onChange={(e) => handleFilterChange({ remoteStatus: e.target.value })}
+        >
+          <option value="">Qualquer status remoto</option>
+          {REMOTE_STATUS_FILTER_OPTIONS.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {notificationsQuery.isLoading ? (
+        <StatusMessage variant="loading" title="Carregando notificações enviadas..." />
+      ) : null}
+
+      {notificationsQuery.isError ? (
+        <StatusMessage variant="error" title="Falha ao carregar notificações enviadas." />
+      ) : null}
+
+      {!notificationsQuery.isLoading && !notificationsQuery.isError && notificationsQuery.data ? (
+        notificationsQuery.data.content.length > 0 ? (
+          <NotificationList
+            notifications={notificationsQuery.data.content}
+            page={notificationsQuery.data.page}
+            totalPages={notificationsQuery.data.totalPages}
+            onPageChange={setHistoryPage}
+            onSelect={handleSelectNotification}
+          />
+        ) : (
+          <StatusMessage variant="empty" title="Nenhuma notificação enviada para este projeto." />
+        )
+      ) : null}
+
+      {selectedNotificationId ? (
+        <NotificationDetailDrawer
+          detail={notificationDetailQuery.data}
+          isLoading={notificationDetailQuery.isLoading}
+          isError={notificationDetailQuery.isError}
+          onClose={() => setSelectedNotificationId(null)}
+        />
+      ) : null}
 
       {isModalOpen ? (
         <div className={styles.modalOverlay}>

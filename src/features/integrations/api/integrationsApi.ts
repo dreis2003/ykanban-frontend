@@ -1,8 +1,10 @@
 import { httpClient } from '@/shared/api/httpClient'
 import type {
+  DeliveryReceiptConfig,
   ProjectNotificationDestination,
   SaveDestinationPayload,
   SaveIntegrationPayload,
+  SetDeliveryReceiptSigningSecretPayload,
   TestConnectionPayload,
   TestConnectionResponse,
   YCommunicationIntegration,
@@ -17,6 +19,15 @@ export const integrationsApi = {
 
   testConnection: (payload: TestConnectionPayload) =>
     httpClient.post<TestConnectionResponse>('/tenants/current/integrations/ycommunication/test', payload),
+
+  getDeliveryReceiptConfig: () =>
+    httpClient.get<DeliveryReceiptConfig>('/tenants/current/integrations/ycommunication/delivery-receipts'),
+
+  setDeliveryReceiptSigningSecret: (payload: SetDeliveryReceiptSigningSecretPayload) =>
+    httpClient.put<DeliveryReceiptConfig>(
+      '/tenants/current/integrations/ycommunication/delivery-receipts/signing-secret',
+      payload
+    ),
 
   listDestinations: (projectId: string) =>
     httpClient.get<ProjectNotificationDestination[]>(`/projects/${projectId}/notification-destinations`),

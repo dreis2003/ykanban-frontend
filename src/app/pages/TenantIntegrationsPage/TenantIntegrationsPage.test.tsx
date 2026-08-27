@@ -55,6 +55,14 @@ describe('TenantIntegrationsPage', () => {
   it('renders integration form with trusted read-only base URL', async () => {
     mockFetchRouter([
       {
+        match: (url, method) => url.includes('/delivery-receipts') && method === 'GET',
+        respond: () =>
+          jsonResponse({
+            configured: false,
+            signingSecretConfigured: false,
+          }),
+      },
+      {
         match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
         respond: () =>
           jsonResponse({
@@ -83,6 +91,14 @@ describe('TenantIntegrationsPage', () => {
     const user = userEvent.setup()
 
     mockFetchRouter([
+      {
+        match: (url, method) => url.includes('/delivery-receipts') && method === 'GET',
+        respond: () =>
+          jsonResponse({
+            configured: false,
+            signingSecretConfigured: false,
+          }),
+      },
       {
         match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
         respond: () =>
@@ -159,5 +175,196 @@ describe('TenantIntegrationsPage', () => {
       active: true,
     })
     expect(keyInput).toHaveValue('')
+  })
+
+  describe('Delivery Receipts', () => {
+    it('prompts to configure the API Key first when the integration is not configured yet', async () => {
+      mockFetchRouter([
+        {
+          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
+          respond: () => jsonResponse({ configured: false, active: false, baseUrl: 'http://localhost:8080' }),
+        },
+      ])
+
+      renderPage()
+
+      expect(await screen.findByTestId('delivery-receipts-card')).toBeInTheDocument()
+      expect(screen.getByText(/Configure a API Key do YCommunication acima primeiro/i)).toBeInTheDocument()
+      expect(screen.queryByLabelText(/Colar Signing Secret/i)).not.toBeInTheDocument()
+    })
+
+    it('shows the read-only callback URL, supported statuses and configured secret status', async () => {
+      mockFetchRouter([
+        {
+          match: (url, method) => url.includes('/delivery-receipts') && method === 'GET',
+          respond: () =>
+            jsonResponse({
+              configured: true,
+              callbackPublicId: 'cb-public-1',
+              callbackUrl: 'https://ykanban.example.com/api/v1/provider-callbacks/ycommunication/cb-public-1',
+              signingSecretConfigured: true,
+              secretRotatedAt: '2026-08-26T12:00:00Z',
+            }),
+        },
+        {
+          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
+          respond: () =>
+            jsonResponse({ configured: true, id: 'int-1', baseUrl: 'http://localhost:8080', active: true }),
+        },
+      ])
+
+      renderPage()
+
+      const callbackInput = await screen.findByDisplayValue(
+        'https://ykanban.example.com/api/v1/provider-callbacks/ycommunication/cb-public-1'
+      )
+      expect(callbackInput).toHaveAttribute('readOnly')
+      expect(callbackInput).toBeDisabled()
+
+      for (const status of ['SENT', 'DELIVERED', 'READ', 'FAILED', 'DEAD_LETTER']) {
+        expect(screen.getByText(status)).toBeInTheDocument()
+      }
+
+      expect(screen.getByTestId('signing-secret-status')).toHaveTextContent('Configurado')
+    })
+
+    it('copies the callback URL to the clipboard', async () => {
+      const user = userEvent.setup()
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText },
+        configurable: true,
+      })
+
+      mockFetchRouter([
+        {
+          match: (url, method) => url.includes('/delivery-receipts') && method === 'GET',
+          respond: () =>
+            jsonResponse({
+              configured: true,
+              callbackUrl: 'https://ykanban.example.com/api/v1/provider-callbacks/ycommunication/cb-public-1',
+              signingSecretConfigured: false,
+            }),
+        },
+        {
+          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
+          respond: () =>
+            jsonResponse({ configured: true, id: 'int-1', baseUrl: 'http://localhost:8080', active: true }),
+        },
+      ])
+
+      renderPage()
+
+      const copyBtn = await screen.findByRole('button', { name: /Copiar/i })
+      await user.click(copyBtn)
+
+      expect(writeText).toHaveBeenCalledWith(
+        'https://ykanban.example.com/api/v1/provider-callbacks/ycommunication/cb-public-1'
+      )
+      expect(await screen.findByRole('button', { name: /Copiado!/i })).toBeInTheDocument()
+    })
+
+    it('disables the submit button until the pasted secret meets the minimum length', async () => {
+      const user = userEvent.setup()
+
+      mockFetchRouter([
+        {
+          match: (url, method) => url.includes('/delivery-receipts') && method === 'GET',
+          respond: () => jsonResponse({ configured: true, signingSecretConfigured: false }),
+        },
+        {
+          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
+          respond: () =>
+            jsonResponse({ configured: true, id: 'int-1', baseUrl: 'http://localhost:8080', active: true }),
+        },
+      ])
+
+      renderPage()
+
+      const secretInput = await screen.findByLabelText(/Colar Signing Secret/i)
+      const saveBtn = screen.getByRole('button', { name: /Salvar Signing Secret/i })
+      expect(saveBtn).toBeDisabled()
+
+      await user.type(secretInput, 'too-short')
+      expect(saveBtn).toBeDisabled()
+
+      await user.type(secretInput, '-now-long-enough-value')
+      expect(saveBtn).not.toBeDisabled()
+    })
+
+    it('saves a pasted signing secret and clears the field on success', async () => {
+      const user = userEvent.setup()
+      let savedPayload: unknown = null
+
+      mockFetchRouter([
+        {
+          match: (url, method) => url.includes('/delivery-receipts/signing-secret') && method === 'PUT',
+          respond: (init) => {
+            savedPayload = JSON.parse(init?.body as string)
+            return jsonResponse({
+              configured: true,
+              callbackUrl: 'https://ykanban.example.com/api/v1/provider-callbacks/ycommunication/cb-public-1',
+              signingSecretConfigured: true,
+              secretRotatedAt: '2026-08-27T08:00:00Z',
+            })
+          },
+        },
+        {
+          match: (url, method) => url.includes('/delivery-receipts') && method === 'GET',
+          respond: () => jsonResponse({ configured: true, signingSecretConfigured: false }),
+        },
+        {
+          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
+          respond: () =>
+            jsonResponse({ configured: true, id: 'int-1', baseUrl: 'http://localhost:8080', active: true }),
+        },
+      ])
+
+      renderPage()
+
+      const secretInput = await screen.findByLabelText(/Colar Signing Secret/i)
+      await user.type(secretInput, 'pasted-signing-secret-from-ycommunication')
+
+      const saveBtn = screen.getByRole('button', { name: /Salvar Signing Secret/i })
+      await user.click(saveBtn)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('signing-secret-save-success-banner')).toBeInTheDocument()
+      })
+
+      expect(savedPayload).toEqual({ signingSecret: 'pasted-signing-secret-from-ycommunication' })
+      expect(secretInput).toHaveValue('')
+    })
+
+    it('shows an error message when saving the signing secret fails', async () => {
+      const user = userEvent.setup()
+
+      mockFetchRouter([
+        {
+          match: (url, method) => url.includes('/delivery-receipts/signing-secret') && method === 'PUT',
+          respond: () =>
+            jsonResponse({ title: 'Configure a API Key do YCommunication antes.' }, 400),
+        },
+        {
+          match: (url, method) => url.includes('/delivery-receipts') && method === 'GET',
+          respond: () => jsonResponse({ configured: true, signingSecretConfigured: false }),
+        },
+        {
+          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
+          respond: () =>
+            jsonResponse({ configured: true, id: 'int-1', baseUrl: 'http://localhost:8080', active: true }),
+        },
+      ])
+
+      renderPage()
+
+      const secretInput = await screen.findByLabelText(/Colar Signing Secret/i)
+      await user.type(secretInput, 'a-perfectly-valid-length-secret-value')
+
+      const saveBtn = screen.getByRole('button', { name: /Salvar Signing Secret/i })
+      await user.click(saveBtn)
+
+      expect(await screen.findByTestId('signing-secret-save-error')).toBeInTheDocument()
+    })
   })
 })

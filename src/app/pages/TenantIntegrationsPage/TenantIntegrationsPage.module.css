@@ -157,3 +157,40 @@
   border-radius: var(--radius-md, 0.375rem);
   font-size: 0.875rem;
 }
+
+.inputRow {
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+}
+
+.inputRow .input {
+  flex: 1;
+}
+
+.statusList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+}
+
+.statusChip {
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 9999px;
+  background: var(--color-secondary, #f4f4f5);
+  color: var(--color-secondary-foreground, #18181b);
+  border: 1px solid var(--color-border, #e4e4e7);
+}
+
+.secretConfigured {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #065f46;
+}
+
+.secretNotConfigured {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-muted-foreground, #71717a);
+}

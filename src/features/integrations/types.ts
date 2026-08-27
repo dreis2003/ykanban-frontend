@@ -24,6 +24,20 @@ export interface TestConnectionResponse {
   errorMessage?: string | undefined
 }
 
+export type DeliveryReceiptStatus = 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | 'DEAD_LETTER'
+
+export interface DeliveryReceiptConfig {
+  configured: boolean
+  callbackPublicId?: string
+  callbackUrl?: string
+  signingSecretConfigured: boolean
+  secretRotatedAt?: string
+}
+
+export interface SetDeliveryReceiptSigningSecretPayload {
+  signingSecret: string
+}
+
 export type CommunicationChannel = 'EMAIL' | 'TELEGRAM' | 'WHATSAPP' | 'WEBHOOK'
 
 export type NotificationEvent = 'CARD_CREATED' | 'CARD_MOVED' | 'CARD_COMPLETED'

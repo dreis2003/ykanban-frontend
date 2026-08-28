@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NotificationStatusBadge } from '@/features/notifications/components/NotificationStatusBadge/NotificationStatusBadge'
-import { remoteStatusLabel } from '@/features/notifications/labels'
+import { aggregateNotificationStatusLabel, remoteStatusLabel, routeStatusLabel } from '@/features/notifications/labels'
 import type { NotificationDetail } from '@/features/notifications/types'
 import { formatDateTime } from '@/shared/utils/formatDate'
 import { StatusMessage } from '@/shared/components/StatusMessage/StatusMessage'
@@ -45,7 +45,73 @@ export function NotificationDetailDrawer({ detail, isLoading, isError, onClose }
         {isLoading ? <StatusMessage variant="loading" title="Carregando detalhe..." /> : null}
         {isError ? <StatusMessage variant="error" title="Falha ao carregar detalhe da notificação." /> : null}
 
-        {!isLoading && !isError && detail ? (
+        {!isLoading && !isError && detail && detail.deliveryMode === 'POLICY' ? (
+          <div className={styles.content} data-testid="notification-policy-detail">
+            <dl className={styles.fields}>
+              <dt>Evento</dt>
+              <dd>{detail.eventType}</dd>
+
+              <dt>Data de criação</dt>
+              <dd>{formatDateTime(detail.createdAt)}</dd>
+
+              <dt>Envio ao Hub</dt>
+              <dd>
+                <NotificationStatusBadge kind="dispatch" status={detail.dispatchStatus} />
+                {detail.dispatchedAt ? <span className={styles.subtext}> em {formatDateTime(detail.dispatchedAt)}</span> : null}
+              </dd>
+
+              <dt>Política</dt>
+              <dd>{detail.policyCode}</dd>
+
+              <dt>Roteamento</dt>
+              <dd>
+                <span data-testid="notification-routing-status">{aggregateNotificationStatusLabel(detail.remoteNotificationStatus)}</span>
+                {detail.remoteNotificationStatusUpdatedAt ? (
+                  <span className={styles.subtext}> em {formatDateTime(detail.remoteNotificationStatusUpdatedAt)}</span>
+                ) : null}
+              </dd>
+
+              {detail.lastError ? (
+                <>
+                  <dt>Último erro</dt>
+                  <dd className={styles.errorText}>{detail.lastError}</dd>
+                </>
+              ) : null}
+            </dl>
+
+            <h4 className={styles.timelineTitle}>Tentativas</h4>
+            {detail.routes && detail.routes.length > 0 ? (
+              <ol className={styles.timeline} data-testid="notification-routes-list">
+                {[...detail.routes]
+                  .sort((a, b) => a.sequence - b.sequence)
+                  .map((route) => (
+                    <li key={route.sequence} className={styles.timelineEntry}>
+                      <span className={styles.timelineTime}>
+                        {route.sequence}. {route.channel}
+                      </span>
+                      <span className={styles.timelineStatus}>{routeStatusLabel(route.remoteMessageStatus)}</span>
+                      {route.ycommunicationMessageId ? (
+                        <span className={styles.messageIdRow}>
+                          <code>{route.ycommunicationMessageId}</code>
+                          <button
+                            type="button"
+                            className={styles.copyButton}
+                            onClick={() => handleCopyId(route.ycommunicationMessageId as string)}
+                          >
+                            {copied ? 'Copiado!' : 'Copiar ID'}
+                          </button>
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+              </ol>
+            ) : (
+              <p className={styles.subtext}>Nenhuma route ativada ainda para esta notificação.</p>
+            )}
+          </div>
+        ) : null}
+
+        {!isLoading && !isError && detail && detail.deliveryMode !== 'POLICY' ? (
           <div className={styles.content}>
             <dl className={styles.fields}>
               <dt>Evento</dt>

@@ -91,6 +91,26 @@ function defaultTemplateHandlers(): FetchHandler[] {
   return [templateCatalogHandler([]), projectEventTemplatesHandler([])]
 }
 
+function policyCatalogHandler(items: unknown[] = []): FetchHandler {
+  return {
+    match: (url, method) => url.includes('/integrations/ycommunication/notification-policies') && method === 'GET',
+    respond: () => jsonResponse(items),
+  }
+}
+
+function projectEventPoliciesHandler(items: unknown[] = []): FetchHandler {
+  return {
+    match: (url, method) => url.includes('/notification-event-policies') && method === 'GET',
+    respond: () => jsonResponse(items),
+  }
+}
+
+/** Handlers padrão (catálogo/config vazios) para toda `mockFetchRouter` desta suíte que não testa
+ * diretamente a seção de policies — evita fetch não mockado quebrando os outros testes. */
+function defaultPolicyHandlers(): FetchHandler[] {
+  return [policyCatalogHandler([]), projectEventPoliciesHandler([])]
+}
+
 function authValue(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
   return {
     user: { id: 'u1', name: 'Ana Admin', email: 'ana@ykanban.dev' },
@@ -154,6 +174,7 @@ describe('ProjectNotificationsPage', () => {
   it('renders project header and destination list', async () => {
     mockFetchRouter([
       ...defaultTemplateHandlers(),
+      ...defaultPolicyHandlers(),
       destinationsHandler([
         {
           id: 'dest-1',
@@ -185,6 +206,7 @@ describe('ProjectNotificationsPage', () => {
 
     mockFetchRouter([
       ...defaultTemplateHandlers(),
+      ...defaultPolicyHandlers(),
       destinationsHandler([]),
       {
         match: (url, method) => url.includes('/notification-destinations') && method === 'POST',
@@ -237,6 +259,7 @@ describe('ProjectNotificationsPage', () => {
 
       mockFetchRouter([
         ...defaultTemplateHandlers(),
+      ...defaultPolicyHandlers(),
         destinationsHandler([]),
         projectHandler(),
         {
@@ -258,7 +281,13 @@ describe('ProjectNotificationsPage', () => {
     })
 
     it('shows the empty state when there are no notifications', async () => {
-      mockFetchRouter([...defaultTemplateHandlers(), destinationsHandler([]), projectHandler(), notificationsListHandler([])])
+      mockFetchRouter([
+        ...defaultTemplateHandlers(),
+        ...defaultPolicyHandlers(),
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+      ])
 
       renderPage()
 
@@ -268,6 +297,7 @@ describe('ProjectNotificationsPage', () => {
     it('shows an error state without leaking stale data on API failure', async () => {
       mockFetchRouter([
         ...defaultTemplateHandlers(),
+      ...defaultPolicyHandlers(),
         destinationsHandler([]),
         projectHandler(),
         {
@@ -285,6 +315,7 @@ describe('ProjectNotificationsPage', () => {
     it('renders the list with distinct dispatch and remote status labels, including a diverging case', async () => {
       mockFetchRouter([
         ...defaultTemplateHandlers(),
+      ...defaultPolicyHandlers(),
         destinationsHandler([]),
         projectHandler(),
         notificationsListHandler([
@@ -309,6 +340,7 @@ describe('ProjectNotificationsPage', () => {
     it('shows "Aguardando atualização" (never "Falhou") when remoteStatus is null', async () => {
       mockFetchRouter([
         ...defaultTemplateHandlers(),
+      ...defaultPolicyHandlers(),
         destinationsHandler([]),
         projectHandler(),
         notificationsListHandler([{ ...NOTIFICATION_SENT, id: 'notif-3', remoteStatus: null, remoteStatusUpdatedAt: null }]),
@@ -323,6 +355,7 @@ describe('ProjectNotificationsPage', () => {
     it('falls back to the raw value for an unknown status without breaking the UI', async () => {
       mockFetchRouter([
         ...defaultTemplateHandlers(),
+      ...defaultPolicyHandlers(),
         destinationsHandler([]),
         projectHandler(),
         notificationsListHandler([{ ...NOTIFICATION_SENT, id: 'notif-4', remoteStatus: 'UNKNOWN_NEW_STATUS' }]),
@@ -338,6 +371,7 @@ describe('ProjectNotificationsPage', () => {
       const user = userEvent.setup()
       mockFetchRouter([
         ...defaultTemplateHandlers(),
+      ...defaultPolicyHandlers(),
         destinationsHandler([]),
         projectHandler(),
         notificationsListHandler([NOTIFICATION_SENT]),
@@ -379,6 +413,7 @@ describe('ProjectNotificationsPage', () => {
 
       mockFetchRouter([
         ...defaultTemplateHandlers(),
+      ...defaultPolicyHandlers(),
         destinationsHandler([]),
         projectHandler(),
         notificationsListHandler([NOTIFICATION_SENT]),
@@ -405,6 +440,7 @@ describe('ProjectNotificationsPage', () => {
       const user = userEvent.setup()
       mockFetchRouter([
         ...defaultTemplateHandlers(),
+      ...defaultPolicyHandlers(),
         destinationsHandler([]),
         projectHandler(),
         notificationsListHandler([NOTIFICATION_SENT]),
@@ -474,6 +510,7 @@ describe('ProjectNotificationsPage', () => {
         projectHandler(),
         notificationsListHandler([]),
         projectEventTemplatesHandler([]),
+        ...defaultPolicyHandlers(),
         {
           match: (url, method) => url.includes('/integrations/ycommunication/templates') && method === 'GET',
           respond: () => catalogPromise,
@@ -493,7 +530,13 @@ describe('ProjectNotificationsPage', () => {
     })
 
     it('shows the empty state when the template catalog is empty', async () => {
-      mockFetchRouter([destinationsHandler([]), projectHandler(), notificationsListHandler([]), ...defaultTemplateHandlers()])
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        ...defaultTemplateHandlers(),
+        ...defaultPolicyHandlers(),
+      ])
 
       renderPage()
 
@@ -506,6 +549,7 @@ describe('ProjectNotificationsPage', () => {
         projectHandler(),
         notificationsListHandler([]),
         projectEventTemplatesHandler([]),
+        ...defaultPolicyHandlers(),
         {
           match: (url, method) => url.includes('/integrations/ycommunication/templates') && method === 'GET',
           respond: () => jsonResponse({ title: 'Erro interno', status: 500 }, 500),
@@ -525,6 +569,7 @@ describe('ProjectNotificationsPage', () => {
         notificationsListHandler([]),
         templateCatalogHandler([CATALOG_ITEM]),
         projectEventTemplatesHandler([]),
+        ...defaultPolicyHandlers(),
       ])
 
       renderPage()
@@ -557,6 +602,7 @@ describe('ProjectNotificationsPage', () => {
             return jsonResponse(MAPPING)
           },
         },
+        ...defaultPolicyHandlers(),
       ])
 
       renderPage()
@@ -594,6 +640,7 @@ describe('ProjectNotificationsPage', () => {
             return jsonResponse(null, 204)
           },
         },
+        ...defaultPolicyHandlers(),
       ])
 
       renderPage()
@@ -616,6 +663,7 @@ describe('ProjectNotificationsPage', () => {
         notificationsListHandler([]),
         templateCatalogHandler([CATALOG_ITEM]),
         projectEventTemplatesHandler([MAPPING]),
+        ...defaultPolicyHandlers(),
       ])
 
       const { rerender, queryClient } = renderPage('proj-1', authValue())
@@ -624,7 +672,13 @@ describe('ProjectNotificationsPage', () => {
       expect(within(table).getByText('YK_CARD_COMPLETED')).toBeInTheDocument()
 
       const otherTenantAuth = authValue({ activeTenant: { id: 't2', name: 'Outra Empresa', slug: 'outra', status: 'ACTIVE' } })
-      mockFetchRouter([destinationsHandler([]), projectHandler(), notificationsListHandler([]), ...defaultTemplateHandlers()])
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        ...defaultTemplateHandlers(),
+        ...defaultPolicyHandlers(),
+      ])
       rerender(
         <QueryClientProvider client={queryClient}>
           <AuthContext.Provider value={otherTenantAuth}>
@@ -656,12 +710,426 @@ describe('ProjectNotificationsPage', () => {
           },
         },
         projectEventTemplatesHandler([]),
+        ...defaultPolicyHandlers(),
       ])
 
       renderPage()
 
       await screen.findByLabelText('Canal')
       expect(Object.keys(observedHeaders).some((h) => h.toLowerCase().includes('api-key'))).toBe(false)
+    })
+  })
+
+  describe('notification policy configuration', () => {
+    const POLICY_ITEM = {
+      code: 'YK_PROJECT_ACTIVITY',
+      name: 'Atividade do Projeto',
+      description: 'Notifica atividade do projeto por múltiplos canais',
+      mode: 'FALLBACK',
+      variables: [
+        { name: 'projectName', type: 'STRING', required: true },
+        { name: 'cardKey', type: 'STRING', required: true },
+      ],
+    }
+
+    const POLICY_MAPPING = {
+      id: 'pol-map-1',
+      projectId: 'proj-1',
+      eventType: 'CARD_COMPLETED',
+      policyCode: 'YK_PROJECT_ACTIVITY',
+      enabled: true,
+      updatedAt: '2026-08-27T12:00:00Z',
+    }
+
+    it('shows a loading state while fetching the policy catalog', async () => {
+      let resolveCatalog: (response: Response) => void = () => {}
+      const catalogPromise = new Promise<Response>((resolve) => {
+        resolveCatalog = resolve
+      })
+
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        ...defaultTemplateHandlers(),
+        projectEventPoliciesHandler([]),
+        {
+          match: (url, method) => url.includes('/integrations/ycommunication/notification-policies') && method === 'GET',
+          respond: () => catalogPromise,
+        },
+      ])
+
+      renderPage()
+
+      await screen.findByRole('heading', { name: 'YKanban Core' })
+      expect(screen.getByText('Carregando catálogo de policies...')).toBeInTheDocument()
+
+      resolveCatalog(jsonResponse([]))
+
+      await waitFor(() => {
+        expect(screen.getByText('Nenhuma Notification Policy disponível.')).toBeInTheDocument()
+      })
+    })
+
+    it('shows the empty state when the policy catalog is empty', async () => {
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        ...defaultTemplateHandlers(),
+        ...defaultPolicyHandlers(),
+      ])
+
+      renderPage()
+
+      expect(await screen.findByText('Nenhuma Notification Policy disponível.')).toBeInTheDocument()
+    })
+
+    it('shows an error state when the policy catalog fails to load', async () => {
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        ...defaultTemplateHandlers(),
+        projectEventPoliciesHandler([]),
+        {
+          match: (url, method) => url.includes('/integrations/ycommunication/notification-policies') && method === 'GET',
+          respond: () => jsonResponse({ title: 'Erro interno', status: 500 }, 500),
+        },
+      ])
+
+      renderPage()
+
+      expect(await screen.findByText('Falha ao carregar o catálogo de policies.')).toBeInTheDocument()
+    })
+
+    it('lets the user select a policy and shows its mode and read-only variable contract', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        ...defaultTemplateHandlers(),
+        policyCatalogHandler([POLICY_ITEM]),
+        projectEventPoliciesHandler([]),
+      ])
+
+      renderPage()
+
+      await user.selectOptions(await screen.findByLabelText('Policy'), 'YK_PROJECT_ACTIVITY')
+
+      expect(screen.getByRole('option', { name: 'YK_PROJECT_ACTIVITY — Atividade do Projeto' })).toBeInTheDocument()
+
+      const contract = await screen.findByTestId('policy-variable-contract')
+      expect(within(contract).getByTestId('policy-mode')).toHaveTextContent('FALLBACK')
+      expect(within(contract).getByText('projectName')).toBeInTheDocument()
+      expect(within(contract).getAllByText(/obrigatório/)).toHaveLength(2)
+    })
+
+    it('saves a policy mapping using policyCode, never the internal UUID (which does not exist)', async () => {
+      const user = userEvent.setup()
+      let savedPayload: unknown = null
+
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        ...defaultTemplateHandlers(),
+        policyCatalogHandler([POLICY_ITEM]),
+        {
+          match: (url, method) => url.endsWith('/projects/proj-1/notification-event-policies') && method === 'GET',
+          respond: () => jsonResponse([]),
+        },
+        {
+          match: (url, method) => url.endsWith('/projects/proj-1/notification-event-policies') && method === 'PUT',
+          respond: (init) => {
+            savedPayload = JSON.parse(init?.body as string)
+            return jsonResponse(POLICY_MAPPING)
+          },
+        },
+      ])
+
+      renderPage()
+
+      await user.selectOptions(await screen.findByLabelText('Evento'), 'CARD_COMPLETED')
+      await user.selectOptions(screen.getByLabelText('Policy'), 'YK_PROJECT_ACTIVITY')
+      await user.click(within(await screen.findByTestId('policy-config-form')).getByRole('button', { name: 'Salvar' }))
+
+      await waitFor(() => {
+        expect(savedPayload).toEqual({ eventType: 'CARD_COMPLETED', policyCode: 'YK_PROJECT_ACTIVITY' })
+      })
+    })
+
+    it('lists configured policy mappings and removes one', async () => {
+      const user = userEvent.setup()
+      let deleteCalled = false
+
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        ...defaultTemplateHandlers(),
+        policyCatalogHandler([POLICY_ITEM]),
+        {
+          match: (url, method) => url.includes('/notification-event-policies') && method === 'GET',
+          respond: () => jsonResponse([POLICY_MAPPING]),
+        },
+        {
+          match: (url, method) => url.includes('/notification-event-policies') && method === 'DELETE',
+          respond: () => {
+            deleteCalled = true
+            return jsonResponse(null, 204)
+          },
+        },
+      ])
+
+      renderPage()
+
+      const table = await screen.findByTestId('policy-mappings-table')
+      expect(within(table).getByText('YK_PROJECT_ACTIVITY')).toBeInTheDocument()
+      expect(within(table).getByText('Conclusão em Produção')).toBeInTheDocument()
+
+      await user.click(within(table).getByRole('button', { name: 'Remover' }))
+
+      await waitFor(() => {
+        expect(deleteCalled).toBe(true)
+      })
+    })
+
+    it('warns when the same event already has a Template mapping configured', async () => {
+      const TEMPLATE_MAPPING = {
+        id: 'tpl-map-1',
+        projectId: 'proj-1',
+        eventType: 'CARD_CREATED',
+        channel: 'TELEGRAM',
+        templateCode: 'YK_CARD_CREATED',
+        updatedAt: '2026-08-27T12:00:00Z',
+      }
+      const user = userEvent.setup()
+
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        templateCatalogHandler([]),
+        projectEventTemplatesHandler([TEMPLATE_MAPPING]),
+        policyCatalogHandler([POLICY_ITEM]),
+        projectEventPoliciesHandler([]),
+      ])
+
+      renderPage()
+
+      // CARD_CREATED já é o evento padrão selecionado no formulário de policy.
+      await user.selectOptions(await screen.findByLabelText('Policy'), 'YK_PROJECT_ACTIVITY')
+
+      expect(await screen.findByTestId('policy-template-conflict-warning')).toHaveTextContent(
+        'a Policy tem prioridade e será usada',
+      )
+    })
+
+    it('never leaks the previous tenant/project policy config on tenant switch', async () => {
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        ...defaultTemplateHandlers(),
+        policyCatalogHandler([POLICY_ITEM]),
+        projectEventPoliciesHandler([POLICY_MAPPING]),
+      ])
+
+      const { rerender, queryClient } = renderPage('proj-1', authValue())
+
+      const table = await screen.findByTestId('policy-mappings-table')
+      expect(within(table).getByText('YK_PROJECT_ACTIVITY')).toBeInTheDocument()
+
+      const otherTenantAuth = authValue({ activeTenant: { id: 't2', name: 'Outra Empresa', slug: 'outra', status: 'ACTIVE' } })
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        ...defaultTemplateHandlers(),
+        ...defaultPolicyHandlers(),
+      ])
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <AuthContext.Provider value={otherTenantAuth}>
+            <MemoryRouter initialEntries={['/projects/proj-1/notifications']}>
+              <Routes>
+                <Route path="/projects/:projectId/notifications" element={<ProjectNotificationsPage />} />
+              </Routes>
+            </MemoryRouter>
+          </AuthContext.Provider>
+        </QueryClientProvider>,
+      )
+
+      await waitFor(() => {
+        expect(screen.queryByText('YK_PROJECT_ACTIVITY')).not.toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('notification detail drawer — policy mode', () => {
+    const POLICY_NOTIFICATION_SUMMARY = {
+      id: 'notif-policy-1',
+      eventType: 'CARD_COMPLETED',
+      channel: null,
+      dispatchStatus: 'DISPATCHED',
+      remoteStatus: null,
+      createdAt: '2026-08-27T14:32:00Z',
+      dispatchedAt: '2026-08-27T14:32:01Z',
+      remoteStatusUpdatedAt: null,
+    }
+
+    it('shows FALLBACK routing with an unused route, never labeled as failed', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter([
+        ...defaultTemplateHandlers(),
+        ...defaultPolicyHandlers(),
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([POLICY_NOTIFICATION_SUMMARY]),
+        notificationDetailHandler('notif-policy-1', {
+          ...POLICY_NOTIFICATION_SUMMARY,
+          ycommunicationMessageId: null,
+          lastError: null,
+          history: [],
+          deliveryMode: 'POLICY',
+          policyCode: 'YK_PROJECT_ACTIVITY',
+          externalNotificationId: 'ext-notif-1',
+          remoteNotificationStatus: 'SUCCEEDED',
+          remoteNotificationStatusUpdatedAt: '2026-08-27T14:33:00Z',
+          routes: [
+            { sequence: 1, channel: 'TELEGRAM', ycommunicationMessageId: 'msg-1', remoteMessageStatus: 'FAILED', remoteStatusUpdatedAt: '2026-08-27T14:32:30Z' },
+            { sequence: 2, channel: 'EMAIL', ycommunicationMessageId: 'msg-2', remoteMessageStatus: 'DELIVERED', remoteStatusUpdatedAt: '2026-08-27T14:33:00Z' },
+            { sequence: 3, channel: 'WHATSAPP', ycommunicationMessageId: null, remoteMessageStatus: null, remoteStatusUpdatedAt: null },
+          ],
+        }),
+      ])
+
+      renderPage()
+
+      const row = await screen.findByTestId('notification-row-notif-policy-1')
+      await user.click(row)
+
+      const drawer = await screen.findByTestId('notification-policy-detail')
+      expect(within(drawer).getByText('YK_PROJECT_ACTIVITY')).toBeInTheDocument()
+      expect(within(drawer).getByTestId('notification-routing-status')).toHaveTextContent('Sucesso')
+
+      const routes = within(drawer).getByTestId('notification-routes-list')
+      const items = within(routes).getAllByRole('listitem')
+      expect(items).toHaveLength(3)
+      expect(items[0]).toHaveTextContent('1. TELEGRAM')
+      expect(items[0]).toHaveTextContent('Falhou')
+      expect(items[1]).toHaveTextContent('2. EMAIL')
+      expect(items[1]).toHaveTextContent('Entregue')
+      expect(items[2]).toHaveTextContent('3. WHATSAPP')
+      expect(items[2]).toHaveTextContent('Não utilizado')
+      expect(items[2]).not.toHaveTextContent('Falhou')
+    })
+
+    it('shows FAN_OUT partial success with mixed route outcomes', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter([
+        ...defaultTemplateHandlers(),
+        ...defaultPolicyHandlers(),
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([POLICY_NOTIFICATION_SUMMARY]),
+        notificationDetailHandler('notif-policy-1', {
+          ...POLICY_NOTIFICATION_SUMMARY,
+          ycommunicationMessageId: null,
+          lastError: null,
+          history: [],
+          deliveryMode: 'POLICY',
+          policyCode: 'YK_CRITICAL_ACTIVITY',
+          externalNotificationId: 'ext-notif-2',
+          remoteNotificationStatus: 'PARTIAL_SUCCESS',
+          remoteNotificationStatusUpdatedAt: '2026-08-27T14:33:00Z',
+          routes: [
+            { sequence: 1, channel: 'TELEGRAM', ycommunicationMessageId: 'msg-1', remoteMessageStatus: 'DELIVERED', remoteStatusUpdatedAt: '2026-08-27T14:33:00Z' },
+            { sequence: 2, channel: 'EMAIL', ycommunicationMessageId: 'msg-2', remoteMessageStatus: 'SENT', remoteStatusUpdatedAt: '2026-08-27T14:32:40Z' },
+            { sequence: 3, channel: 'WHATSAPP', ycommunicationMessageId: 'msg-3', remoteMessageStatus: 'FAILED', remoteStatusUpdatedAt: '2026-08-27T14:32:35Z' },
+          ],
+        }),
+      ])
+
+      renderPage()
+
+      const row = await screen.findByTestId('notification-row-notif-policy-1')
+      await user.click(row)
+
+      const drawer = await screen.findByTestId('notification-policy-detail')
+      expect(within(drawer).getByTestId('notification-routing-status')).toHaveTextContent('Sucesso parcial')
+
+      const routes = within(drawer).getByTestId('notification-routes-list')
+      const items = within(routes).getAllByRole('listitem')
+      expect(items[0]).toHaveTextContent('Entregue')
+      expect(items[1]).toHaveTextContent('Enviado')
+      expect(items[2]).toHaveTextContent('Falhou')
+    })
+
+    it('falls back safely on an unknown additive aggregate status without breaking the UI', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter([
+        ...defaultTemplateHandlers(),
+        ...defaultPolicyHandlers(),
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([POLICY_NOTIFICATION_SUMMARY]),
+        notificationDetailHandler('notif-policy-1', {
+          ...POLICY_NOTIFICATION_SUMMARY,
+          ycommunicationMessageId: null,
+          lastError: null,
+          history: [],
+          deliveryMode: 'POLICY',
+          policyCode: 'YK_PROJECT_ACTIVITY',
+          externalNotificationId: 'ext-notif-3',
+          remoteNotificationStatus: 'UNKNOWN_FUTURE_STATUS',
+          remoteNotificationStatusUpdatedAt: '2026-08-27T14:33:00Z',
+          routes: [],
+        }),
+      ])
+
+      renderPage()
+
+      const row = await screen.findByTestId('notification-row-notif-policy-1')
+      await user.click(row)
+
+      const drawer = await screen.findByTestId('notification-policy-detail')
+      expect(within(drawer).getByTestId('notification-routing-status')).toHaveTextContent('UNKNOWN_FUTURE_STATUS')
+    })
+
+    it('keeps the legacy TEMPLATE-mode detail view unchanged (regression)', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter([
+        ...defaultTemplateHandlers(),
+        ...defaultPolicyHandlers(),
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([NOTIFICATION_SENT]),
+        notificationDetailHandler('notif-1', {
+          ...NOTIFICATION_SENT,
+          ycommunicationMessageId: 'msg-abc-123',
+          lastError: null,
+          history: [{ status: 'DELIVERED', occurredAt: '2026-08-27T14:32:02Z' }],
+          deliveryMode: 'TEMPLATE',
+          policyCode: null,
+          externalNotificationId: null,
+          remoteNotificationStatus: null,
+          remoteNotificationStatusUpdatedAt: null,
+          routes: [],
+        }),
+      ])
+
+      renderPage()
+
+      const row = await screen.findByTestId('notification-row-notif-1')
+      await user.click(row)
+
+      const drawer = await screen.findByRole('dialog', { name: 'Detalhe da notificação' })
+      expect(within(drawer).getByText('msg-abc-123')).toBeInTheDocument()
+      expect(within(drawer).queryByTestId('notification-policy-detail')).not.toBeInTheDocument()
+      expect(within(drawer).getByTestId('notification-history-timeline')).toBeInTheDocument()
     })
   })
 })

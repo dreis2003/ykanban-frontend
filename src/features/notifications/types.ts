@@ -14,10 +14,28 @@ export interface NotificationHistoryEntry {
   occurredAt: string
 }
 
+/** Uma Route ativada de uma Notification Policy (YCOM-018) — nunca inclui destination; uma route
+ * FALLBACK ainda não ativada tem `ycommunicationMessageId`/`remoteMessageStatus` ambos `null`. */
+export interface NotificationRoute {
+  sequence: number
+  channel: string
+  ycommunicationMessageId: string | null
+  remoteMessageStatus: string | null
+  remoteStatusUpdatedAt: string | null
+}
+
+export type DeliveryMode = 'TEMPLATE' | 'POLICY'
+
 export interface NotificationDetail extends NotificationSummary {
   ycommunicationMessageId: string | null
   lastError: string | null
   history: NotificationHistoryEntry[]
+  deliveryMode?: DeliveryMode
+  policyCode?: string | null
+  externalNotificationId?: string | null
+  remoteNotificationStatus?: string | null
+  remoteNotificationStatusUpdatedAt?: string | null
+  routes?: NotificationRoute[]
 }
 
 export interface ListNotificationsParams {

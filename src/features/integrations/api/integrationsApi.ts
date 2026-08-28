@@ -1,11 +1,14 @@
 import { httpClient } from '@/shared/api/httpClient'
 import type {
   DeliveryReceiptConfig,
+  NotificationPolicyCatalogItem,
   NotificationTemplateCatalogItem,
   ProjectNotificationDestination,
+  ProjectNotificationEventPolicy,
   ProjectNotificationEventTemplate,
   SaveDestinationPayload,
   SaveIntegrationPayload,
+  SaveProjectNotificationEventPolicyPayload,
   SaveProjectNotificationEventTemplatePayload,
   SetDeliveryReceiptSigningSecretPayload,
   TestConnectionPayload,
@@ -60,4 +63,16 @@ export const integrationsApi = {
     httpClient.delete<void>(
       `/projects/${projectId}/notification-templates?eventType=${encodeURIComponent(eventType)}&channel=${encodeURIComponent(channel)}`
     ),
+
+  listNotificationPolicyCatalog: () =>
+    httpClient.get<NotificationPolicyCatalogItem[]>('/tenants/current/integrations/ycommunication/notification-policies'),
+
+  listProjectEventPolicies: (projectId: string) =>
+    httpClient.get<ProjectNotificationEventPolicy[]>(`/projects/${projectId}/notification-event-policies`),
+
+  saveProjectEventPolicy: (projectId: string, payload: SaveProjectNotificationEventPolicyPayload) =>
+    httpClient.put<ProjectNotificationEventPolicy>(`/projects/${projectId}/notification-event-policies`, payload),
+
+  deleteProjectEventPolicy: (projectId: string, eventType: string) =>
+    httpClient.delete<void>(`/projects/${projectId}/notification-event-policies?eventType=${encodeURIComponent(eventType)}`),
 }

@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ROUTES } from '@/app/router/routes'
 import { useAuth } from '@/features/auth/AuthContext'
 import { integrationsApi } from '@/features/integrations/api/integrationsApi'
+import { NotificationPolicyConfig } from '@/features/integrations/components/NotificationPolicyConfig/NotificationPolicyConfig'
 import { NotificationTemplateConfig } from '@/features/integrations/components/NotificationTemplateConfig/NotificationTemplateConfig'
 import type {
   CommunicationChannel,
@@ -231,6 +232,8 @@ export function ProjectNotificationsPage() {
       )}
 
       <NotificationTemplateConfig projectId={projectId as string} />
+
+      <NotificationPolicyConfig projectId={projectId as string} />
 
       <div className={styles.sectionHeader}>
         <div>

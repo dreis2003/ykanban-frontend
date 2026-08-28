@@ -91,3 +91,36 @@ export interface SaveProjectNotificationEventTemplatePayload {
   channel: CommunicationChannel
   templateCode: string
 }
+
+export type NotificationPolicyMode = 'FAN_OUT' | 'FALLBACK'
+
+/** Contrato de variável de uma Notification Policy (YCOM-018) — usa `name`, não `path`: um
+ * contrato público deliberadamente distinto do catálogo de Template (YCOM-017), pois o consumidor
+ * nunca sabe qual Route/Template concreto vai renderizar cada variável. */
+export interface NotificationPolicyVariable {
+  name: string
+  type: TemplateVariableType
+  required: boolean
+}
+
+export interface NotificationPolicyCatalogItem {
+  code: string
+  name: string
+  description?: string | null
+  mode: NotificationPolicyMode
+  variables: NotificationPolicyVariable[]
+}
+
+export interface ProjectNotificationEventPolicy {
+  id: string
+  projectId: string
+  eventType: NotificationEvent
+  policyCode: string
+  enabled: boolean
+  updatedAt: string
+}
+
+export interface SaveProjectNotificationEventPolicyPayload {
+  eventType: NotificationEvent
+  policyCode: string
+}

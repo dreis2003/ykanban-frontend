@@ -15,7 +15,7 @@ describe('authApi.login', () => {
     vi.restoreAllMocks()
   })
 
-  it('envia "senha" (não "password") para o backend, mantendo a assinatura em inglês', async () => {
+  it('envia "password" para o backend, conforme o contrato da API', async () => {
     const fetchMock = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(jsonResponse({ accessToken: 'token' }))
@@ -29,7 +29,7 @@ describe('authApi.login', () => {
     expect(String(url)).toContain('/auth/login')
     expect(JSON.parse(init?.body as string)).toEqual({
       email: 'ana@ykanban.dev',
-      senha: 'secret',
+      password: 'secret',
     })
   })
 })

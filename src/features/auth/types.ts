@@ -32,6 +32,7 @@ export interface LoginResponse {
   context: AuthenticationContext
   tenant: Tenant | null
   membershipRole: MembershipRole | null
+  platform?: PlatformSummary
 }
 
 export interface AccessTokenResponse {

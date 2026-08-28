@@ -19,15 +19,18 @@ function jsonResponse(body: unknown, status = 200): Response {
   } as Response
 }
 
-function renderLoginPage() {
+function renderLoginPage(initialEntries = ['/login']) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <MemoryRouter initialEntries={['/login']}>
+        <MemoryRouter initialEntries={initialEntries}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/" element={<p>página inicial</p>} />
+            <Route path="/projects" element={<p>página de projetos</p>} />
+            <Route path="/select-organization" element={<p>seleção de organização</p>} />
+            <Route path="/platform" element={<p>dashboard da plataforma</p>} />
+            <Route path="/platform/tenants" element={<p>tenants da plataforma</p>} />
           </Routes>
         </MemoryRouter>
       </AuthProvider>
@@ -51,7 +54,7 @@ describe('LoginPage', () => {
     expect(screen.getByRole('button', { name: 'Entrar' })).toBeInTheDocument()
   })
 
-  it('faz login com sucesso e navega para a rota original', async () => {
+  it('faz login com 1 tenant e navega para /projects', async () => {
     const user = userEvent.setup()
     vi.stubGlobal(
       'fetch',
@@ -61,7 +64,16 @@ describe('LoginPage', () => {
           return Promise.resolve(jsonResponse({ title: 'x', status: 401 }, 401))
         }
         if (url.includes('/auth/login')) {
-          return Promise.resolve(jsonResponse({ accessToken: 't', expiresIn: 900, user: AUTH_USER, context: 'TENANT_ACCESS', tenant: TENANT, membershipRole: 'DEVELOPER' }))
+          return Promise.resolve(
+            jsonResponse({
+              accessToken: 't',
+              expiresIn: 900,
+              user: AUTH_USER,
+              context: 'TENANT_ACCESS',
+              tenant: TENANT,
+              membershipRole: 'DEVELOPER',
+            }),
+          )
         }
         return Promise.reject(new Error(`fetch inesperado: ${url}`))
       }),
@@ -73,7 +85,130 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText('Senha'), 'secret')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    await waitFor(() => expect(screen.getByText('página inicial')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('página de projetos')).toBeInTheDocument())
+  })
+
+  it('faz login com 2+ tenants e navega para /select-organization', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = input.toString()
+        if (url.includes('/auth/refresh')) {
+          return Promise.resolve(jsonResponse({ title: 'x', status: 401 }, 401))
+        }
+        if (url.includes('/auth/login')) {
+          return Promise.resolve(
+            jsonResponse({
+              accessToken: 't',
+              expiresIn: 900,
+              user: AUTH_USER,
+              context: 'TENANT_SELECTION',
+              tenant: null,
+              membershipRole: null,
+            }),
+          )
+        }
+        if (url.includes('/auth/tenants')) {
+          return Promise.resolve(
+            jsonResponse([
+              { id: 't1', name: 'Tenant 1', slug: 't1', tenantStatus: 'ACTIVE', membershipRole: 'ADMIN' },
+              { id: 't2', name: 'Tenant 2', slug: 't2', tenantStatus: 'ACTIVE', membershipRole: 'DEVELOPER' },
+            ]),
+          )
+        }
+        if (url.includes('/auth/me')) {
+          return Promise.resolve(
+            jsonResponse({ user: AUTH_USER, context: 'TENANT_SELECTION', tenant: null, membership: null, platform: { roles: [] } }),
+          )
+        }
+        return Promise.reject(new Error(`fetch inesperado: ${url}`))
+      }),
+    )
+
+    renderLoginPage()
+
+    await user.type(screen.getByLabelText('E-mail'), 'ana@ykanban.dev')
+    await user.type(screen.getByLabelText('Senha'), 'secret')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    await waitFor(() => expect(screen.getByText('seleção de organização')).toBeInTheDocument())
+  })
+
+  it('faz login com 0 tenants + PLATFORM_ADMIN e navega para /platform', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = input.toString()
+        if (url.includes('/auth/refresh')) {
+          return Promise.resolve(jsonResponse({ title: 'x', status: 401 }, 401))
+        }
+        if (url.includes('/auth/login')) {
+          return Promise.resolve(
+            jsonResponse({
+              accessToken: 't',
+              expiresIn: 900,
+              user: { id: 'admin1', name: 'Admin HML', email: 'admin-hml@seudominio.com' },
+              context: 'TENANT_SELECTION',
+              tenant: null,
+              membershipRole: null,
+              platform: { roles: ['PLATFORM_ADMIN'] },
+            }),
+          )
+        }
+        if (url.includes('/auth/tenants')) {
+          return Promise.resolve(jsonResponse([]))
+        }
+        return Promise.reject(new Error(`fetch inesperado: ${url}`))
+      }),
+    )
+
+    renderLoginPage()
+
+    await user.type(screen.getByLabelText('E-mail'), 'admin-hml@seudominio.com')
+    await user.type(screen.getByLabelText('Senha'), 'secret')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    await waitFor(() => expect(screen.getByText('dashboard da plataforma')).toBeInTheDocument())
+  })
+
+  it('faz login com 0 tenants + sem PlatformAuthority e navega para /select-organization', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = input.toString()
+        if (url.includes('/auth/refresh')) {
+          return Promise.resolve(jsonResponse({ title: 'x', status: 401 }, 401))
+        }
+        if (url.includes('/auth/login')) {
+          return Promise.resolve(
+            jsonResponse({
+              accessToken: 't',
+              expiresIn: 900,
+              user: AUTH_USER,
+              context: 'TENANT_SELECTION',
+              tenant: null,
+              membershipRole: null,
+              platform: { roles: [] },
+            }),
+          )
+        }
+        if (url.includes('/auth/tenants')) {
+          return Promise.resolve(jsonResponse([]))
+        }
+        return Promise.reject(new Error(`fetch inesperado: ${url}`))
+      }),
+    )
+
+    renderLoginPage()
+
+    await user.type(screen.getByLabelText('E-mail'), 'ana@ykanban.dev')
+    await user.type(screen.getByLabelText('Senha'), 'secret')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    await waitFor(() => expect(screen.getByText('seleção de organização')).toBeInTheDocument())
   })
 
   it('mostra mensagem genérica quando as credenciais são inválidas', async () => {
@@ -114,7 +249,17 @@ describe('LoginPage', () => {
         }
         if (url.includes('/auth/login')) {
           return new Promise<Response>((resolve) => {
-            resolveLogin = () => resolve(jsonResponse({ accessToken: 't', expiresIn: 900, user: AUTH_USER, context: 'TENANT_ACCESS', tenant: TENANT, membershipRole: 'DEVELOPER' }))
+            resolveLogin = () =>
+              resolve(
+                jsonResponse({
+                  accessToken: 't',
+                  expiresIn: 900,
+                  user: AUTH_USER,
+                  context: 'TENANT_ACCESS',
+                  tenant: TENANT,
+                  membershipRole: 'DEVELOPER',
+                }),
+              )
           })
         }
         return Promise.reject(new Error(`fetch inesperado: ${url}`))
@@ -130,6 +275,6 @@ describe('LoginPage', () => {
     expect(screen.getByRole('button', { name: 'Entrando…' })).toBeDisabled()
 
     resolveLogin?.()
-    await waitFor(() => expect(screen.getByText('página inicial')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('página de projetos')).toBeInTheDocument())
   })
 })

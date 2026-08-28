@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/app/router/routes'
 import { useAuth } from '@/features/auth/AuthContext'
 import type { MembershipRole } from '@/features/auth/types'
@@ -18,7 +18,7 @@ const ROLE_LABELS: Record<MembershipRole, string> = {
  * de uma Membership ACTIVE (login não escolhe por ele, ver ADR 0020) ou porque escolheu trocar
  * de organização a partir do menu do usuário. */
 export function SelectOrganizationPage() {
-  const { availableTenants, selectTenant, logout } = useAuth()
+  const { availableTenants, selectTenant, logout, platformRoles } = useAuth()
   const navigate = useNavigate()
   const [pendingTenantId, setPendingTenantId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -37,13 +37,17 @@ export function SelectOrganizationPage() {
     [selectTenant, navigate],
   )
 
+  if (availableTenants.length === 0 && platformRoles.includes('PLATFORM_ADMIN')) {
+    return <Navigate to={ROUTES.platformDashboard} replace />
+  }
+
   if (availableTenants.length === 0) {
     return (
       <div className={styles.page}>
         <div className={styles.card}>
           <StatusMessage
             variant="empty"
-            title="Nenhuma organização disponível."
+            title="Você ainda não possui uma organização."
             description="Você ainda não possui acesso a nenhuma organização."
             action={
               <button type="button" className={styles.logoutLink} onClick={() => void logout()}>

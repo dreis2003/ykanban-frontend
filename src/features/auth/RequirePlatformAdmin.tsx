@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { ROUTES } from '@/app/router/routes'
 import { useAuth } from '@/features/auth/AuthContext'
 import { StatusMessage } from '@/shared/components/StatusMessage/StatusMessage'
@@ -16,13 +16,14 @@ interface Props {
  */
 export function RequirePlatformAdmin({ children }: Props) {
   const { isAuthenticated, isLoading, platformRoles } = useAuth()
+  const location = useLocation()
 
   if (isLoading) {
     return <StatusMessage variant="loading" title="Verificando sessão…" />
   }
 
   if (!isAuthenticated) {
-    return <Navigate to={ROUTES.login} replace />
+    return <Navigate to={ROUTES.login} replace state={{ from: location }} />
   }
 
   if (!platformRoles.includes('PLATFORM_ADMIN')) {

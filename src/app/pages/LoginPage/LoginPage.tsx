@@ -2,6 +2,7 @@ import { useCallback, useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
 import { ROUTES } from '@/app/router/routes'
 import { useAuth } from '@/features/auth/AuthContext'
+import { resolvePostLoginRedirect } from '@/features/auth/loginRedirect'
 import { ApiError } from '@/shared/api/apiError'
 import styles from './LoginPage.module.css'
 
@@ -10,7 +11,7 @@ interface LocationState {
 }
 
 export function LoginPage() {
-  const { login, isAuthenticated } = useAuth()
+  const { login, isAuthenticated, isTenantSelected, availableTenants, platformRoles } = useAuth()
   const location = useLocation()
 
   const [email, setEmail] = useState('')
@@ -40,7 +41,13 @@ export function LoginPage() {
 
   if (isAuthenticated) {
     const state = location.state as LocationState | null
-    return <Navigate to={state?.from?.pathname ?? ROUTES.home} replace />
+    const target = resolvePostLoginRedirect({
+      isTenantSelected,
+      availableTenants,
+      platformRoles,
+      from: state?.from?.pathname,
+    })
+    return <Navigate to={target} replace />
   }
 
   return (

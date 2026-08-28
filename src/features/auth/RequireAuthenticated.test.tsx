@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AuthContext, type AuthContextValue } from '@/features/auth/AuthContext'
-import { RequirePlatformAdmin } from '@/features/auth/RequirePlatformAdmin'
+import { RequireAuthenticated } from '@/features/auth/RequireAuthenticated'
 
 function authValue(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
   return {
@@ -30,15 +30,15 @@ function authValue(overrides: Partial<AuthContextValue> = {}): AuthContextValue 
 function renderGuard(auth: AuthContextValue) {
   return render(
     <AuthContext.Provider value={auth}>
-      <MemoryRouter initialEntries={['/platform']}>
+      <MemoryRouter initialEntries={['/select-organization']}>
         <Routes>
           <Route path="/login" element={<p>tela de login</p>} />
           <Route
-            path="/platform"
+            path="/select-organization"
             element={
-              <RequirePlatformAdmin>
-                <p>conteúdo protegido</p>
-              </RequirePlatformAdmin>
+              <RequireAuthenticated>
+                <p>conteúdo autenticado</p>
+              </RequireAuthenticated>
             }
           />
         </Routes>
@@ -47,7 +47,7 @@ function renderGuard(auth: AuthContextValue) {
   )
 }
 
-describe('RequirePlatformAdmin', () => {
+describe('RequireAuthenticated', () => {
   it('mostra loading enquanto a sessão é verificada', () => {
     renderGuard(authValue({ isLoading: true, isAuthenticated: false }))
 
@@ -58,19 +58,12 @@ describe('RequirePlatformAdmin', () => {
     renderGuard(authValue({ isAuthenticated: false }))
 
     expect(screen.getByText('tela de login')).toBeInTheDocument()
-    expect(screen.queryByText('conteúdo protegido')).not.toBeInTheDocument()
+    expect(screen.queryByText('conteúdo autenticado')).not.toBeInTheDocument()
   })
 
-  it('mostra acesso restrito para usuário autenticado sem PLATFORM_ADMIN', () => {
-    renderGuard(authValue({ platformRoles: [] }))
+  it('renderiza o conteúdo para usuário autenticado mesmo sem Tenant ativo', () => {
+    renderGuard(authValue({ isAuthenticated: true, isTenantSelected: false }))
 
-    expect(screen.getByText('Acesso restrito')).toBeInTheDocument()
-    expect(screen.queryByText('conteúdo protegido')).not.toBeInTheDocument()
-  })
-
-  it('renderiza o conteúdo para PLATFORM_ADMIN mesmo sem Tenant selecionado', () => {
-    renderGuard(authValue({ platformRoles: ['PLATFORM_ADMIN'], isTenantSelected: false }))
-
-    expect(screen.getByText('conteúdo protegido')).toBeInTheDocument()
+    expect(screen.getByText('conteúdo autenticado')).toBeInTheDocument()
   })
 })

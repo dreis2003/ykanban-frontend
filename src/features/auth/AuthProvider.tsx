@@ -82,6 +82,16 @@ export function AuthProvider({ children }: Props) {
     async (accessToken: string) => {
       authSession.setAccessToken(accessToken)
       const me = await authApi.me()
+      let tenants: AvailableTenant[] = []
+      if (me.context === 'TENANT_SELECTION') {
+        try {
+          tenants = await authApi.availableTenants()
+        } catch {
+          tenants = []
+        }
+      }
+      setAvailableTenants(tenants)
+      setPlatformRoles(me.platform?.roles ?? [])
       setSession({
         user: me.user,
         activeTenant: me.tenant,
@@ -89,13 +99,9 @@ export function AuthProvider({ children }: Props) {
         membershipStatus: me.membership?.status ?? null,
         authenticationContext: me.context,
       })
-      setPlatformRoles(me.platform?.roles ?? [])
       setStatus('authenticated')
-      if (me.context === 'TENANT_SELECTION') {
-        await fetchAvailableTenants()
-      }
     },
-    [fetchAvailableTenants],
+    [],
   )
 
   useEffect(() => {
@@ -122,24 +128,22 @@ export function AuthProvider({ children }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- roda só na montagem, por design.
   }, [])
 
-  /** `LoginResponse`/`TenantSelectionResponse` não carregam `platform` (só `/auth/me` carrega, ver
-   * ADR 0023) — buscado em segundo plano, best-effort, para nunca atrasar/bloquear login ou troca
-   * de Tenant por conta de uma role ortogonal e rara. */
-  const refreshPlatformRoles = useCallback(async () => {
-    try {
-      const me = await authApi.me()
-      setPlatformRoles(me.platform?.roles ?? [])
-    } catch {
-      // Best-effort — próxima chamada a refreshSession() tenta de novo.
-    }
-  }, [])
-
   /** Corpo comum de `login` e `completeInvitationRegistration` — as duas APIs devolvem exatamente
    * a mesma forma (`LoginResponse`), já que registrar-se por convite também autentica na hora
    * (ver ADR 0022, item 80). */
   const applyLoginResponse = useCallback(
     async (result: LoginResponse) => {
       authSession.setAccessToken(result.accessToken)
+      let tenants: AvailableTenant[] = []
+      if (result.context === 'TENANT_SELECTION') {
+        try {
+          tenants = await authApi.availableTenants()
+        } catch {
+          tenants = []
+        }
+      }
+      setAvailableTenants(tenants)
+      setPlatformRoles(result.platform?.roles ?? [])
       setSession({
         user: result.user,
         activeTenant: result.tenant,
@@ -147,16 +151,10 @@ export function AuthProvider({ children }: Props) {
         membershipStatus: result.tenant ? 'ACTIVE' : null,
         authenticationContext: result.context,
       })
-      setStatus('authenticated')
       await resetQueryCache()
-      if (result.context === 'TENANT_SELECTION') {
-        await fetchAvailableTenants()
-      } else {
-        setAvailableTenants([])
-      }
-      void refreshPlatformRoles()
+      setStatus('authenticated')
     },
-    [fetchAvailableTenants, resetQueryCache, refreshPlatformRoles],
+    [resetQueryCache],
   )
 
   const login = useCallback(
@@ -193,9 +191,8 @@ export function AuthProvider({ children }: Props) {
       }))
       setAvailableTenants([])
       await resetQueryCache()
-      void refreshPlatformRoles()
     },
-    [resetQueryCache, refreshPlatformRoles],
+    [resetQueryCache],
   )
 
   const selectTenant = useCallback(
@@ -218,6 +215,16 @@ export function AuthProvider({ children }: Props) {
 
   const refreshSession = useCallback(async () => {
     const me = await authApi.me()
+    let tenants: AvailableTenant[] = []
+    if (me.context === 'TENANT_SELECTION') {
+      try {
+        tenants = await authApi.availableTenants()
+      } catch {
+        tenants = []
+      }
+    }
+    setAvailableTenants(tenants)
+    setPlatformRoles(me.platform?.roles ?? [])
     setSession({
       user: me.user,
       activeTenant: me.tenant,
@@ -225,12 +232,8 @@ export function AuthProvider({ children }: Props) {
       membershipStatus: me.membership?.status ?? null,
       authenticationContext: me.context,
     })
-    setPlatformRoles(me.platform?.roles ?? [])
-    if (me.context === 'TENANT_SELECTION') {
-      await fetchAvailableTenants()
-    }
     return me.context
-  }, [fetchAvailableTenants])
+  }, [])
 
   const logout = useCallback(async () => {
     try {

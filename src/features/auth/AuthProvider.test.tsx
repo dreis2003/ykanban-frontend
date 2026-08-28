@@ -160,4 +160,54 @@ describe('AuthProvider', () => {
     await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('unauthenticated'))
     expect(screen.getByTestId('user')).toHaveTextContent('')
   })
+
+  it('restaura sessão de platform admin com 0 tenants via refresh + me sem exigir activeTenant', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = input.toString()
+        if (url.includes('/auth/refresh')) {
+          return Promise.resolve(jsonResponse({ accessToken: 't', expiresIn: 900 }))
+        }
+        if (url.includes('/auth/me')) {
+          return Promise.resolve(
+            jsonResponse({
+              user: { id: 'admin1', name: 'Admin HML', email: 'admin-hml@seudominio.com' },
+              context: 'TENANT_SELECTION',
+              tenant: null,
+              membership: null,
+              platform: { roles: ['PLATFORM_ADMIN'] },
+            }),
+          )
+        }
+        if (url.includes('/auth/tenants')) {
+          return Promise.resolve(jsonResponse([]))
+        }
+        return Promise.reject(new Error(`fetch inesperado: ${url}`))
+      }),
+    )
+
+    function PlatformProbe() {
+      const { user, isAuthenticated, platformRoles, isTenantSelected } = useAuth()
+      return (
+        <div>
+          <span data-testid="auth">{isAuthenticated ? 'yes' : 'no'}</span>
+          <span data-testid="tenant-selected">{isTenantSelected ? 'yes' : 'no'}</span>
+          <span data-testid="role">{platformRoles.join(',')}</span>
+          <span data-testid="email">{user?.email ?? ''}</span>
+        </div>
+      )
+    }
+
+    renderWithProviders(
+      <AuthProvider>
+        <PlatformProbe />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByTestId('auth')).toHaveTextContent('yes'))
+    expect(screen.getByTestId('tenant-selected')).toHaveTextContent('no')
+    expect(screen.getByTestId('role')).toHaveTextContent('PLATFORM_ADMIN')
+    expect(screen.getByTestId('email')).toHaveTextContent('admin-hml@seudominio.com')
+  })
 })

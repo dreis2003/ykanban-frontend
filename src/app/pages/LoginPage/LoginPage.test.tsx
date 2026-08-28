@@ -75,6 +75,17 @@ describe('LoginPage', () => {
             }),
           )
         }
+        if (url.includes('/auth/me')) {
+          return Promise.resolve(
+            jsonResponse({
+              user: AUTH_USER,
+              context: 'TENANT_ACCESS',
+              tenant: TENANT,
+              membership: { role: 'DEVELOPER', status: 'ACTIVE' },
+              platform: { roles: [] },
+            }),
+          )
+        }
         return Promise.reject(new Error(`fetch inesperado: ${url}`))
       }),
     )
@@ -153,6 +164,16 @@ describe('LoginPage', () => {
               context: 'TENANT_SELECTION',
               tenant: null,
               membershipRole: null,
+            }),
+          )
+        }
+        if (url.includes('/auth/me')) {
+          return Promise.resolve(
+            jsonResponse({
+              user: { id: 'admin1', name: 'Admin HML', email: 'admin-hml@seudominio.com' },
+              context: 'TENANT_SELECTION',
+              tenant: null,
+              membership: null,
               platform: { roles: ['PLATFORM_ADMIN'] },
             }),
           )
@@ -191,6 +212,16 @@ describe('LoginPage', () => {
               context: 'TENANT_SELECTION',
               tenant: null,
               membershipRole: null,
+            }),
+          )
+        }
+        if (url.includes('/auth/me')) {
+          return Promise.resolve(
+            jsonResponse({
+              user: AUTH_USER,
+              context: 'TENANT_SELECTION',
+              tenant: null,
+              membership: null,
               platform: { roles: [] },
             }),
           )
@@ -261,6 +292,17 @@ describe('LoginPage', () => {
                 }),
               )
           })
+        }
+        if (url.includes('/auth/me')) {
+          return Promise.resolve(
+            jsonResponse({
+              user: AUTH_USER,
+              context: 'TENANT_ACCESS',
+              tenant: TENANT,
+              membership: { role: 'DEVELOPER', status: 'ACTIVE' },
+              platform: { roles: [] },
+            }),
+          )
         }
         return Promise.reject(new Error(`fetch inesperado: ${url}`))
       }),

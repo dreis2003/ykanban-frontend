@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter } from 'react-router-dom'
 import { MainLayout } from '@/layouts/MainLayout/MainLayout'
 import { PlatformLayout } from '@/layouts/PlatformLayout/PlatformLayout'
 import { PublicLayout } from '@/layouts/PublicLayout/PublicLayout'
@@ -31,17 +31,19 @@ import { TenantSubscriptionPage } from '@/app/pages/TenantSubscriptionPage/Tenan
 import { RequireAuth } from '@/features/auth/RequireAuth'
 import { RequireAuthenticated } from '@/features/auth/RequireAuthenticated'
 import { RequirePlatformAdmin } from '@/features/auth/RequirePlatformAdmin'
+import { RootRedirect } from '@/app/router/RootRedirect'
 import { ROUTES } from '@/app/router/routes'
 
 /**
  * `/login` e `/invitations/:token` são as únicas rotas totalmente públicas (ver ADR 0022 para a
- * segunda — precisa funcionar para quem ainda nem tem conta). `/select-organization` exige
- * identidade mas dispensa Tenant ativo (é onde ele é resolvido — ver ADR 0020); as demais exigem
- * os dois via {@code RequireAuth}. `/projects` é o destino pós-seleção — `/` apenas redireciona
- * para lá. `/platform/**` (ver ADR 0023) é uma árvore de rotas própria, irmã desta — exige
- * identidade e `PLATFORM_ADMIN` via {@code RequirePlatformAdmin}, nunca Tenant selecionado.
+ * segunda — precisa funcionar para quem ainda nem tem conta). `/` direciona conforme identidade e
+ * contexto (via {@code RootRedirect}). `/select-organization` exige identidade mas dispensa
+ * Tenant ativo (é onde ele é resolvido — ver ADR 0020); as demais rotas de negócio exigem os dois
+ * via {@code RequireAuth}. `/platform/**` (ver ADR 0023) é uma árvore de rotas própria, irmã desta —
+ * exige identidade e `PLATFORM_ADMIN` via {@code RequirePlatformAdmin}, nunca Tenant selecionado.
  */
 export const router = createBrowserRouter([
+  { path: ROUTES.home, element: <RootRedirect /> },
   { path: ROUTES.login, element: <LoginPage /> },
   { path: '/invitations/:token', element: <AcceptInvitationPage /> },
   // Área comercial pública (ver ADR 0029/Prompt 30) — entrada principal de aquisição do YKanban,
@@ -88,7 +90,6 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { path: ROUTES.home, element: <Navigate to={ROUTES.projects} replace /> },
       { path: ROUTES.projects, element: <ProjectsPage /> },
       { path: ROUTES.members, element: <MembersPage /> },
       { path: ROUTES.subscription, element: <TenantSubscriptionPage /> },

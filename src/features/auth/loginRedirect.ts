@@ -10,14 +10,14 @@ export interface ResolvePostLoginRedirectParams {
 
 /**
  * Determina a rota de destino após o login ou autenticação:
- * - Caso 1 (1 Tenant ativo): vai para a rota original ou /projects.
- * - Caso 2 (2+ Tenants): vai para /select-organization.
- * - Caso 3 (0 Tenants + PLATFORM_ADMIN ativo): vai para a rota original de /platform ou /platform.
- * - Caso 4 (0 Tenants e sem PlatformAuthority): vai para /select-organization (estado sem organização).
+ * - Caso 1 (Tenant ativo / TENANT_ACCESS): vai para a rota original ou /projects.
+ * - Caso 2 (Platform Admin sem Tenant ativo): vai para a rota original de /platform ou /platform.
+ * - Caso 3 (Minha Conta): vai para /account.
+ * - Caso 4 (Sem Tenant ativo e não é Platform Admin): vai para /select-organization.
  */
 export function resolvePostLoginRedirect({
   isTenantSelected,
-  availableTenants,
+  availableTenants: _availableTenants,
   platformRoles,
   from,
 }: ResolvePostLoginRedirectParams): string {
@@ -33,7 +33,7 @@ export function resolvePostLoginRedirect({
     return from
   }
 
-  // Caso 1: Usuário possui exatamente 1 TenantMembership ACTIVE (Tenant já selecionado)
+  // Caso 1: Usuário possui Tenant ativo (TENANT_ACCESS)
   if (isTenantSelected) {
     if (
       from &&
@@ -46,11 +46,11 @@ export function resolvePostLoginRedirect({
     return ROUTES.projects
   }
 
-  // Caso 3: 0 TenantMemberships + PLATFORM_ADMIN ACTIVE
-  if (availableTenants.length === 0 && isPlatformAdmin) {
+  // Caso 2: PLATFORM_ADMIN ativo sem Tenant ativo
+  if (isPlatformAdmin) {
     return ROUTES.platformDashboard
   }
 
-  // Caso 2 (2+ Tenants) ou Caso 4 (0 Tenants sem autoridade de plataforma)
+  // Caso 4: Sem Tenant ativo e sem autoridade de plataforma (2+ Tenants para escolha ou 0 Tenants)
   return ROUTES.selectOrganization
 }

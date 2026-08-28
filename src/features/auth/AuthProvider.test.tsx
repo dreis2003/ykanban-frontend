@@ -107,6 +107,17 @@ describe('AuthProvider', () => {
             }),
           )
         }
+        if (url.includes('/auth/me')) {
+          return Promise.resolve(
+            jsonResponse({
+              user: USER,
+              context: 'TENANT_ACCESS',
+              tenant: TENANT,
+              membership: { role: 'DEVELOPER', status: 'ACTIVE' },
+              platform: { roles: [] },
+            }),
+          )
+        }
         return Promise.reject(new Error(`fetch inesperado: ${url}`))
       }),
     )

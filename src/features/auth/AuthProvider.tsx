@@ -99,9 +99,10 @@ export function AuthProvider({ children }: Props) {
         membershipStatus: me.membership?.status ?? null,
         authenticationContext: me.context,
       })
+      await resetQueryCache()
       setStatus('authenticated')
     },
-    [],
+    [resetQueryCache],
   )
 
   useEffect(() => {
@@ -128,41 +129,12 @@ export function AuthProvider({ children }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- roda só na montagem, por design.
   }, [])
 
-  /** Corpo comum de `login` e `completeInvitationRegistration` — as duas APIs devolvem exatamente
-   * a mesma forma (`LoginResponse`), já que registrar-se por convite também autentica na hora
-   * (ver ADR 0022, item 80). */
-  const applyLoginResponse = useCallback(
-    async (result: LoginResponse) => {
-      authSession.setAccessToken(result.accessToken)
-      let tenants: AvailableTenant[] = []
-      if (result.context === 'TENANT_SELECTION') {
-        try {
-          tenants = await authApi.availableTenants()
-        } catch {
-          tenants = []
-        }
-      }
-      setAvailableTenants(tenants)
-      setPlatformRoles(result.platform?.roles ?? [])
-      setSession({
-        user: result.user,
-        activeTenant: result.tenant,
-        membershipRole: result.membershipRole,
-        membershipStatus: result.tenant ? 'ACTIVE' : null,
-        authenticationContext: result.context,
-      })
-      await resetQueryCache()
-      setStatus('authenticated')
-    },
-    [resetQueryCache],
-  )
-
   const login = useCallback(
     async (email: string, password: string) => {
       const result = await authApi.login(email, password)
-      await applyLoginResponse(result)
+      await applyMe(result.accessToken)
     },
-    [applyLoginResponse],
+    [applyMe],
   )
 
   /** Usado pela tela pública de convite após `POST /public/invitations/{token}/register` (ver
@@ -170,9 +142,9 @@ export function AuthProvider({ children }: Props) {
    * `features/auth` a `features/invitations`); este método só aplica o resultado já obtido. */
   const completeInvitationRegistration = useCallback(
     async (result: LoginResponse) => {
-      await applyLoginResponse(result)
+      await applyMe(result.accessToken)
     },
-    [applyLoginResponse],
+    [applyMe],
   )
 
   /** Corpo comum de `selectTenant` e `completeInvitationAcceptance` — ambos tornam um Tenant

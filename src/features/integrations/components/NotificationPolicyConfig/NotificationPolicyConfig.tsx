@@ -3,8 +3,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/AuthContext'
 import { integrationsApi } from '@/features/integrations/api/integrationsApi'
 import type { NotificationEvent } from '@/features/integrations/types'
+import { ApiError } from '@/shared/api/apiError'
+import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { StatusMessage } from '@/shared/components/StatusMessage/StatusMessage'
 import styles from './NotificationPolicyConfig.module.css'
+
+function recipientCatalogErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    return error.problem?.detail ?? error.message
+  }
+  return 'Falha ao carregar o catálogo de destinatários.'
+}
 
 const EVENT_OPTIONS: NotificationEvent[] = ['CARD_CREATED', 'CARD_MOVED', 'CARD_COMPLETED']
 const EVENT_LABELS: Record<NotificationEvent, string> = {
@@ -43,6 +52,9 @@ export function NotificationPolicyConfig({ projectId }: Props) {
 
   const [selectedEvent, setSelectedEvent] = useState<NotificationEvent>('CARD_CREATED')
   const [selectedPolicyCode, setSelectedPolicyCode] = useState('')
+  const [selectedRecipientRef, setSelectedRecipientRef] = useState('')
+  const [recipientSearch, setRecipientSearch] = useState('')
+  const debouncedRecipientSearch = useDebouncedValue(recipientSearch, 300)
 
   const catalogQuery = useQuery({
     queryKey: ['project-notification-policy-catalog', activeTenant?.id],
@@ -64,11 +76,42 @@ export function NotificationPolicyConfig({ projectId }: Props) {
     enabled: Boolean(activeTenant?.id) && Boolean(projectId),
   })
 
+  const catalog = catalogQuery.data ?? []
+  const selectedPolicy = catalog.find((item) => item.code === selectedPolicyCode)
+  const recipientRequired = selectedPolicy?.recipientRequired ?? false
+
+  const recipientCatalogQuery = useQuery({
+    queryKey: ['project-notification-recipient-catalog', activeTenant?.id, debouncedRecipientSearch],
+    queryFn: () => integrationsApi.listRecipientCatalog({ size: 20, ...(debouncedRecipientSearch ? { q: debouncedRecipientSearch } : {}) }),
+    enabled: Boolean(activeTenant?.id) && recipientRequired,
+  })
+
+  // Trocar de Policy para uma que não exige destinatário (ou trocar de evento) nunca deve deixar
+  // uma seleção antiga de recipientRef "pendurada" e enviada por engano num payload que não a exige
+  // — resetado diretamente nos handlers de troca, não via effect (evita cascading renders).
+  function handleEventChange(event: NotificationEvent) {
+    setSelectedEvent(event)
+    setSelectedRecipientRef('')
+    setRecipientSearch('')
+  }
+
+  function handlePolicyCodeChange(policyCode: string) {
+    setSelectedPolicyCode(policyCode)
+    setSelectedRecipientRef('')
+    setRecipientSearch('')
+  }
+
   const saveMutation = useMutation({
-    mutationFn: () => integrationsApi.saveProjectEventPolicy(projectId, { eventType: selectedEvent, policyCode: selectedPolicyCode }),
+    mutationFn: () =>
+      integrationsApi.saveProjectEventPolicy(projectId, {
+        eventType: selectedEvent,
+        policyCode: selectedPolicyCode,
+        ...(recipientRequired && selectedRecipientRef ? { recipientRef: selectedRecipientRef } : {}),
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['project-notification-event-policies', activeTenant?.id, projectId] })
       setSelectedPolicyCode('')
+      setSelectedRecipientRef('')
     },
   })
 
@@ -79,13 +122,12 @@ export function NotificationPolicyConfig({ projectId }: Props) {
     },
   })
 
-  const catalog = catalogQuery.data ?? []
-  const selectedPolicy = catalog.find((item) => item.code === selectedPolicyCode)
   const eventHasTemplateMapping = (templateMappingsQuery.data ?? []).some((m) => m.eventType === selectedEvent)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedPolicyCode) return
+    if (recipientRequired && !selectedRecipientRef) return
     saveMutation.mutate()
   }
 
@@ -124,7 +166,7 @@ export function NotificationPolicyConfig({ projectId }: Props) {
                 id="policy-event-select"
                 className={styles.select}
                 value={selectedEvent}
-                onChange={(e) => setSelectedEvent(e.target.value as NotificationEvent)}
+                onChange={(e) => handleEventChange(e.target.value as NotificationEvent)}
               >
                 {EVENT_OPTIONS.map((evt) => (
                   <option key={evt} value={evt}>
@@ -142,7 +184,7 @@ export function NotificationPolicyConfig({ projectId }: Props) {
                 id="policy-code-select"
                 className={styles.select}
                 value={selectedPolicyCode}
-                onChange={(e) => setSelectedPolicyCode(e.target.value)}
+                onChange={(e) => handlePolicyCodeChange(e.target.value)}
               >
                 <option value="">Selecione uma policy</option>
                 {catalog.map((item) => (
@@ -153,7 +195,61 @@ export function NotificationPolicyConfig({ projectId }: Props) {
               </select>
             </div>
 
-            <button type="submit" className={styles.btnPrimary} disabled={!selectedPolicyCode || saveMutation.isPending}>
+            {recipientRequired ? (
+              <div className={styles.field} data-testid="policy-recipient-field">
+                <label htmlFor="policy-recipient-search" className={styles.label}>
+                  Destinatário
+                </label>
+                <input
+                  id="policy-recipient-search"
+                  type="text"
+                  className={styles.select}
+                  placeholder="Buscar por nome ou referência..."
+                  value={recipientSearch}
+                  onChange={(e) => setRecipientSearch(e.target.value)}
+                />
+                {recipientCatalogQuery.isLoading ? (
+                  <p className={styles.modeHelp}>Carregando destinatários...</p>
+                ) : null}
+                {recipientCatalogQuery.isError ? (
+                  <p className={styles.error} data-testid="policy-recipient-error">
+                    {recipientCatalogErrorMessage(recipientCatalogQuery.error)}
+                  </p>
+                ) : null}
+                {!recipientCatalogQuery.isLoading &&
+                !recipientCatalogQuery.isError &&
+                (recipientCatalogQuery.data?.content.length ?? 0) === 0 ? (
+                  <p className={styles.modeHelp} data-testid="policy-recipient-empty">
+                    Nenhum destinatário disponível no YCommunication.
+                    <br />
+                    Cadastre o destinatário no YCommunication e garanta que a API Key possua RECIPIENTS_READ.
+                  </p>
+                ) : null}
+                {!recipientCatalogQuery.isLoading && !recipientCatalogQuery.isError && (recipientCatalogQuery.data?.content.length ?? 0) > 0 ? (
+                  <select
+                    id="policy-recipient-select"
+                    aria-label="Selecionar destinatário"
+                    className={styles.select}
+                    value={selectedRecipientRef}
+                    onChange={(e) => setSelectedRecipientRef(e.target.value)}
+                  >
+                    <option value="">Selecione um destinatário</option>
+                    {(recipientCatalogQuery.data?.content ?? []).map((recipient) => (
+                      <option key={recipient.recipientRef} value={recipient.recipientRef}>
+                        {recipient.displayName} — {recipient.recipientRef}
+                        {recipient.configuredChannels.length > 0 ? ` (${recipient.configuredChannels.join(', ')})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+              </div>
+            ) : null}
+
+            <button
+              type="submit"
+              className={styles.btnPrimary}
+              disabled={!selectedPolicyCode || (recipientRequired && !selectedRecipientRef) || saveMutation.isPending}
+            >
               {saveMutation.isPending ? 'Salvando...' : 'Salvar'}
             </button>
           </form>

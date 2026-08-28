@@ -1,4 +1,5 @@
 import { httpClient } from '@/shared/api/httpClient'
+import type { PageResponse } from '@/shared/types/pageResponse'
 import type {
   DeliveryReceiptConfig,
   NotificationPolicyCatalogItem,
@@ -6,6 +7,7 @@ import type {
   ProjectNotificationDestination,
   ProjectNotificationEventPolicy,
   ProjectNotificationEventTemplate,
+  RecipientCatalogItem,
   SaveDestinationPayload,
   SaveIntegrationPayload,
   SaveProjectNotificationEventPolicyPayload,
@@ -75,4 +77,16 @@ export const integrationsApi = {
 
   deleteProjectEventPolicy: (projectId: string, eventType: string) =>
     httpClient.delete<void>(`/projects/${projectId}/notification-event-policies?eventType=${encodeURIComponent(eventType)}`),
+
+  listRecipientCatalog: (params: { page?: number; size?: number; q?: string } = {}) => {
+    const query = new URLSearchParams()
+    query.set('page', String(params.page ?? 0))
+    query.set('size', String(params.size ?? 20))
+    if (params.q) {
+      query.set('q', params.q)
+    }
+    return httpClient.get<PageResponse<RecipientCatalogItem>>(
+      `/tenants/current/integrations/ycommunication/recipients?${query.toString()}`,
+    )
+  },
 }

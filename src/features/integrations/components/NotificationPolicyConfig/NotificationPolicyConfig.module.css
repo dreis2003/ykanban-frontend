@@ -104,6 +104,12 @@
   margin: 0 0 0.75rem;
 }
 
+.error {
+  font-size: 0.75rem;
+  color: #b91c1c;
+  margin: 0;
+}
+
 .variableList {
   list-style: none;
   margin: 0;

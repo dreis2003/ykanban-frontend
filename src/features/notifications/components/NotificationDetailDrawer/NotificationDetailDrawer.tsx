@@ -63,6 +63,15 @@ export function NotificationDetailDrawer({ detail, isLoading, isError, onClose }
               <dt>Política</dt>
               <dd>{detail.policyCode}</dd>
 
+              {detail.recipientRef ? (
+                <>
+                  <dt>Destinatário</dt>
+                  <dd data-testid="notification-recipient-ref">
+                    <code>{detail.recipientRef}</code>
+                  </dd>
+                </>
+              ) : null}
+
               <dt>Roteamento</dt>
               <dd>
                 <span data-testid="notification-routing-status">{aggregateNotificationStatusLabel(detail.remoteNotificationStatus)}</span>
@@ -89,7 +98,9 @@ export function NotificationDetailDrawer({ detail, isLoading, isError, onClose }
                       <span className={styles.timelineTime}>
                         {route.sequence}. {route.channel}
                       </span>
-                      <span className={styles.timelineStatus}>{routeStatusLabel(route.remoteMessageStatus)}</span>
+                      <span className={styles.timelineStatus}>
+                        {routeStatusLabel(route.remoteMessageStatus, route.routeState, route.skipReason)}
+                      </span>
                       {route.ycommunicationMessageId ? (
                         <span className={styles.messageIdRow}>
                           <code>{route.ycommunicationMessageId}</code>

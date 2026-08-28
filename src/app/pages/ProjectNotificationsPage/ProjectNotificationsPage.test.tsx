@@ -111,6 +111,19 @@ function defaultPolicyHandlers(): FetchHandler[] {
   return [policyCatalogHandler([]), projectEventPoliciesHandler([])]
 }
 
+function recipientCatalogHandler(items: unknown[] = [], status = 200): FetchHandler {
+  return {
+    match: (url, method) => url.includes('/integrations/ycommunication/recipients') && method === 'GET',
+    respond: () =>
+      status >= 400
+        ? jsonResponse(
+            { title: 'Permissão insuficiente no YCommunication', detail: 'A API Key do YCommunication não possui permissão para consultar destinatários.', status },
+            status,
+          )
+        : jsonResponse(pageOf(items)),
+  }
+}
+
 function authValue(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
   return {
     user: { id: 'u1', name: 'Ana Admin', email: 'ana@ykanban.dev' },
@@ -968,6 +981,161 @@ describe('ProjectNotificationsPage', () => {
     })
   })
 
+  describe('recipient selector for recipientRequired policies (YCOM-019)', () => {
+    const NON_RECIPIENT_POLICY_ITEM = {
+      code: 'YK_PROJECT_ACTIVITY',
+      name: 'Atividade do Projeto',
+      description: 'Notifica atividade do projeto por múltiplos canais',
+      mode: 'FALLBACK',
+      variables: [
+        { name: 'projectName', type: 'STRING', required: true },
+        { name: 'cardKey', type: 'STRING', required: true },
+      ],
+    }
+    const RECIPIENT_POLICY_ITEM = { ...NON_RECIPIENT_POLICY_ITEM, code: 'YK_RECIPIENT_POLICY', name: 'Notifica Destinatário', recipientRequired: true }
+    const RECIPIENT_ITEM = { recipientRef: 'PROJECT:8b590585', displayName: 'Equipe de Projeto', active: true, configuredChannels: ['EMAIL', 'TELEGRAM'] }
+
+    it('does not show a recipient selector for a policy that is not recipientRequired', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        ...defaultTemplateHandlers(),
+        policyCatalogHandler([NON_RECIPIENT_POLICY_ITEM]),
+        projectEventPoliciesHandler([]),
+      ])
+
+      renderPage()
+
+      await user.selectOptions(await screen.findByLabelText('Policy'), 'YK_PROJECT_ACTIVITY')
+
+      expect(screen.queryByTestId('policy-recipient-field')).not.toBeInTheDocument()
+    })
+
+    it('shows a recipient selector, populates it from the catalog and requires a selection to submit', async () => {
+      const user = userEvent.setup()
+      let savedPayload: unknown = null
+
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        ...defaultTemplateHandlers(),
+        policyCatalogHandler([RECIPIENT_POLICY_ITEM]),
+        recipientCatalogHandler([RECIPIENT_ITEM]),
+        {
+          match: (url, method) => url.endsWith('/projects/proj-1/notification-event-policies') && method === 'GET',
+          respond: () => jsonResponse([]),
+        },
+        {
+          match: (url, method) => url.endsWith('/projects/proj-1/notification-event-policies') && method === 'PUT',
+          respond: (init) => {
+            savedPayload = JSON.parse(init?.body as string)
+            return jsonResponse({
+              id: 'pol-map-2',
+              projectId: 'proj-1',
+              eventType: 'CARD_CREATED',
+              policyCode: 'YK_RECIPIENT_POLICY',
+              recipientRef: 'PROJECT:8b590585',
+              enabled: true,
+              updatedAt: '2026-08-27T12:00:00Z',
+            })
+          },
+        },
+      ])
+
+      renderPage()
+
+      await user.selectOptions(await screen.findByLabelText('Policy'), 'YK_RECIPIENT_POLICY')
+
+      const field = await screen.findByTestId('policy-recipient-field')
+      expect(field).toBeInTheDocument()
+
+      const form = await screen.findByTestId('policy-config-form')
+      const submitBtn = within(form).getByRole('button', { name: 'Salvar' })
+      expect(submitBtn).toBeDisabled()
+
+      const recipientSelect = await screen.findByLabelText('Selecionar destinatário')
+      expect(within(recipientSelect).getByText(/Equipe de Projeto — PROJECT:8b590585/)).toBeInTheDocument()
+      await user.selectOptions(recipientSelect, 'PROJECT:8b590585')
+
+      expect(submitBtn).not.toBeDisabled()
+      await user.click(submitBtn)
+
+      await waitFor(() => {
+        expect(savedPayload).toEqual({
+          eventType: 'CARD_CREATED',
+          policyCode: 'YK_RECIPIENT_POLICY',
+          recipientRef: 'PROJECT:8b590585',
+        })
+      })
+    })
+
+    it('shows an empty-catalog message with guidance when no recipients are available', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        ...defaultTemplateHandlers(),
+        policyCatalogHandler([RECIPIENT_POLICY_ITEM]),
+        projectEventPoliciesHandler([]),
+        recipientCatalogHandler([]),
+      ])
+
+      renderPage()
+
+      await user.selectOptions(await screen.findByLabelText('Policy'), 'YK_RECIPIENT_POLICY')
+
+      expect(await screen.findByTestId('policy-recipient-empty')).toHaveTextContent('Nenhum destinatário disponível no YCommunication.')
+    })
+
+    it('shows the YCommunication scope-missing message on a 409 without breaking the page', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        ...defaultTemplateHandlers(),
+        policyCatalogHandler([RECIPIENT_POLICY_ITEM]),
+        projectEventPoliciesHandler([]),
+        recipientCatalogHandler([], 409),
+      ])
+
+      renderPage()
+
+      await user.selectOptions(await screen.findByLabelText('Policy'), 'YK_RECIPIENT_POLICY')
+
+      expect(await screen.findByTestId('policy-recipient-error')).toHaveTextContent(
+        'A API Key do YCommunication não possui permissão para consultar destinatários.',
+      )
+    })
+
+    it('resets the recipient selection when switching away to a policy that is not recipientRequired', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        ...defaultTemplateHandlers(),
+        policyCatalogHandler([RECIPIENT_POLICY_ITEM, NON_RECIPIENT_POLICY_ITEM]),
+        projectEventPoliciesHandler([]),
+        recipientCatalogHandler([RECIPIENT_ITEM]),
+      ])
+
+      renderPage()
+
+      await user.selectOptions(await screen.findByLabelText('Policy'), 'YK_RECIPIENT_POLICY')
+      const recipientSelect = await screen.findByLabelText('Selecionar destinatário')
+      await user.selectOptions(recipientSelect, 'PROJECT:8b590585')
+
+      await user.selectOptions(screen.getByLabelText('Policy'), 'YK_PROJECT_ACTIVITY')
+
+      expect(screen.queryByTestId('policy-recipient-field')).not.toBeInTheDocument()
+    })
+  })
+
   describe('notification detail drawer — policy mode', () => {
     const POLICY_NOTIFICATION_SUMMARY = {
       id: 'notif-policy-1',
@@ -1130,6 +1298,115 @@ describe('ProjectNotificationsPage', () => {
       expect(within(drawer).getByText('msg-abc-123')).toBeInTheDocument()
       expect(within(drawer).queryByTestId('notification-policy-detail')).not.toBeInTheDocument()
       expect(within(drawer).getByTestId('notification-history-timeline')).toBeInTheDocument()
+    })
+
+    it('shows the recipientRef and skip-reason-aware labels for SKIPPED and PENDING routes (YCOM-019)', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter([
+        ...defaultTemplateHandlers(),
+        ...defaultPolicyHandlers(),
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([POLICY_NOTIFICATION_SUMMARY]),
+        notificationDetailHandler('notif-policy-1', {
+          ...POLICY_NOTIFICATION_SUMMARY,
+          ycommunicationMessageId: null,
+          lastError: null,
+          history: [],
+          deliveryMode: 'POLICY',
+          policyCode: 'YK_PROJECT_ACTIVITY',
+          externalNotificationId: 'ext-notif-4',
+          remoteNotificationStatus: 'PARTIAL_SUCCESS',
+          remoteNotificationStatusUpdatedAt: '2026-08-27T14:33:00Z',
+          recipientRef: 'PROJECT:8b590585',
+          routes: [
+            {
+              sequence: 1,
+              channel: 'TELEGRAM',
+              ycommunicationMessageId: null,
+              remoteMessageStatus: null,
+              remoteStatusUpdatedAt: null,
+              routeState: 'SKIPPED',
+              skipReason: 'PREFERENCE_DISABLED',
+            },
+            {
+              sequence: 2,
+              channel: 'EMAIL',
+              ycommunicationMessageId: null,
+              remoteMessageStatus: null,
+              remoteStatusUpdatedAt: null,
+              routeState: 'SKIPPED',
+              skipReason: 'CONTACT_POINT_UNAVAILABLE',
+            },
+            {
+              sequence: 3,
+              channel: 'WHATSAPP',
+              ycommunicationMessageId: 'msg-3',
+              remoteMessageStatus: 'DELIVERED',
+              remoteStatusUpdatedAt: '2026-08-27T14:33:00Z',
+              routeState: 'SUCCEEDED',
+              skipReason: null,
+            },
+            {
+              sequence: 4,
+              channel: 'WEBHOOK',
+              ycommunicationMessageId: null,
+              remoteMessageStatus: null,
+              remoteStatusUpdatedAt: null,
+              routeState: 'PENDING',
+              skipReason: null,
+            },
+          ],
+        }),
+      ])
+
+      renderPage()
+
+      const row = await screen.findByTestId('notification-row-notif-policy-1')
+      await user.click(row)
+
+      const drawer = await screen.findByTestId('notification-policy-detail')
+      expect(within(drawer).getByTestId('notification-recipient-ref')).toHaveTextContent('PROJECT:8b590585')
+
+      const routes = within(drawer).getByTestId('notification-routes-list')
+      const items = within(routes).getAllByRole('listitem')
+      expect(items).toHaveLength(4)
+      expect(items[0]).toHaveTextContent('Não utilizada — Preferência desabilitada')
+      expect(items[1]).toHaveTextContent('Não utilizada — Contato indisponível')
+      expect(items[2]).toHaveTextContent('Entregue')
+      expect(items[3]).toHaveTextContent('Aguardando')
+      expect(items[3]).not.toHaveTextContent('Não utilizado')
+    })
+
+    it('does not show a Destinatário field when recipientRef is absent (regression)', async () => {
+      const user = userEvent.setup()
+      mockFetchRouter([
+        ...defaultTemplateHandlers(),
+        ...defaultPolicyHandlers(),
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([POLICY_NOTIFICATION_SUMMARY]),
+        notificationDetailHandler('notif-policy-1', {
+          ...POLICY_NOTIFICATION_SUMMARY,
+          ycommunicationMessageId: null,
+          lastError: null,
+          history: [],
+          deliveryMode: 'POLICY',
+          policyCode: 'YK_PROJECT_ACTIVITY',
+          externalNotificationId: 'ext-notif-5',
+          remoteNotificationStatus: 'SUCCEEDED',
+          remoteNotificationStatusUpdatedAt: '2026-08-27T14:33:00Z',
+          routes: [],
+        }),
+      ])
+
+      renderPage()
+
+      const row = await screen.findByTestId('notification-row-notif-policy-1')
+      await user.click(row)
+
+      const drawer = await screen.findByTestId('notification-policy-detail')
+      expect(within(drawer).queryByTestId('notification-recipient-ref')).not.toBeInTheDocument()
     })
   })
 })

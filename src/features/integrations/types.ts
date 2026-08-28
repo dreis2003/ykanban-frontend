@@ -109,6 +109,9 @@ export interface NotificationPolicyCatalogItem {
   description?: string | null
   mode: NotificationPolicyMode
   variables: NotificationPolicyVariable[]
+  /** YCOM-019 — true quando ao menos uma Route habilitada da Policy é RECIPIENT_PROFILE; nesse
+   * caso o consumidor precisa informar `recipientRef` ao configurar/enviar. */
+  recipientRequired: boolean
 }
 
 export interface ProjectNotificationEventPolicy {
@@ -116,6 +119,8 @@ export interface ProjectNotificationEventPolicy {
   projectId: string
   eventType: NotificationEvent
   policyCode: string
+  /** YCOM-019 — obrigatório quando a Policy referenciada é `recipientRequired`; `null` caso contrário. */
+  recipientRef: string | null
   enabled: boolean
   updatedAt: string
 }
@@ -123,4 +128,14 @@ export interface ProjectNotificationEventPolicy {
 export interface SaveProjectNotificationEventPolicyPayload {
   eventType: NotificationEvent
   policyCode: string
+  recipientRef?: string
+}
+
+/** Item do catálogo de Recipient Profiles do YCommunication (YCOM-019) — nunca inclui valor de
+ * contato (mascarado ou não), só quais canais estão configurados para dar contexto na seleção. */
+export interface RecipientCatalogItem {
+  recipientRef: string
+  displayName: string
+  active: boolean
+  configuredChannels: CommunicationChannel[]
 }

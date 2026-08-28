@@ -9,7 +9,11 @@ import type {
 
 export const authApi = {
   login: (email: string, password: string) =>
-    httpClient.post<LoginResponse>('/auth/login', { email, password }, { skipAuthRetry: true }),
+    httpClient.post<LoginResponse>(
+      '/auth/login',
+      { email, senha: password },
+      { skipAuthRetry: true },
+    ),
   refresh: () =>
     httpClient.post<AccessTokenResponse>('/auth/refresh', undefined, { skipAuthRetry: true }),
   logout: () => httpClient.post<void>('/auth/logout', undefined, { skipAuthRetry: true }),

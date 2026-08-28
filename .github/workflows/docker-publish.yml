@@ -43,11 +43,13 @@ jobs:
         run: |
           if [ "${{ github.ref_name }}" = "main" ]; then
             echo "prefix=prd" >> "$GITHUB_OUTPUT"
-            echo "api_base_url=https://api-ykanban.yakuzastudio.com.br/api/v1" >> "$GITHUB_OUTPUT"
           else
             echo "prefix=hml" >> "$GITHUB_OUTPUT"
-            echo "api_base_url=https://api-ykanban-hml.yakuzastudio.com.br/api/v1" >> "$GITHUB_OUTPUT"
           fi
+          # A API é servida pelo mesmo domínio via Ingress (/api -> ykanban-api),
+          # então o frontend deve chamar sempre um caminho relativo, nunca um
+          # subdomínio separado — evita CORS e mismatch de host entre ambientes.
+          echo "api_base_url=/api/v1" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3

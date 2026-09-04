@@ -15,6 +15,7 @@ import { NotificationList } from '@/features/notifications/components/Notificati
 import type { NotificationSummary } from '@/features/notifications/types'
 import { projectsApi } from '@/features/projects/api/projectsApi'
 import { ProjectPageHeader } from '@/features/projects/components/ProjectPageHeader/ProjectPageHeader'
+import { ApiError } from '@/shared/api/apiError'
 import { StatusBadge } from '@/shared/components/StatusBadge/StatusBadge'
 import { StatusMessage } from '@/shared/components/StatusMessage/StatusMessage'
 import styles from './ProjectNotificationsPage.module.css'
@@ -121,13 +122,17 @@ export function ProjectNotificationsPage() {
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
+    // Formato real exigido pelo YCommunication (NotificationDestinationRecipientValidator/
+    // EmailRecipient/TelegramRecipient/WhatsAppRecipient) - nunca inventar chaves como "email"/
+    // "phone": um destino com o formato errado é aceito silenciosamente aqui e só falha (400, sem
+    // log no servidor) na primeira notificação real, ver ADR relacionada ao incidente de payload.
     let payload = recipient
     if (channel === 'EMAIL') {
-      payload = JSON.stringify({ email: recipient.trim() })
+      payload = JSON.stringify({ to: [recipient.trim()] })
     } else if (channel === 'TELEGRAM') {
       payload = JSON.stringify({ chatId: recipient.trim() })
     } else if (channel === 'WHATSAPP') {
-      payload = JSON.stringify({ phone: recipient.trim() })
+      payload = JSON.stringify({ phoneNumber: recipient.trim() })
     } else if (channel === 'WEBHOOK') {
       payload = JSON.stringify({ url: recipient.trim() })
     }
@@ -149,7 +154,12 @@ export function ProjectNotificationsPage() {
   const parseRecipientDisplay = (dest: ProjectNotificationDestination) => {
     try {
       const parsed = JSON.parse(dest.recipientPayload)
-      return parsed.email || parsed.chatId || parsed.phone || parsed.url || dest.recipientPayload
+      if (Array.isArray(parsed.to) && parsed.to.length > 0) {
+        return parsed.to.join(', ')
+      }
+      // parsed.email/parsed.phone: só para exibir destinos legados/inativos criados antes do
+      // formato real de contrato ({"to":[...]}/{"phoneNumber":...}) ser corrigido aqui.
+      return parsed.chatId || parsed.phoneNumber || parsed.url || parsed.email || parsed.phone || dest.recipientPayload
     } catch {
       return dest.recipientPayload
     }
@@ -379,6 +389,14 @@ export function ProjectNotificationsPage() {
                 />
                 <span>Destino ativo</span>
               </label>
+
+              {createMutation.isError ? (
+                <div className={styles.modalError} data-testid="create-destination-error">
+                  {createMutation.error instanceof ApiError && createMutation.error.problem?.detail
+                    ? createMutation.error.problem.detail
+                    : 'Não foi possível salvar o destino de notificação. Verifique os dados informados.'}
+                </div>
+              ) : null}
 
               <div className={styles.modalActions}>
                 <button

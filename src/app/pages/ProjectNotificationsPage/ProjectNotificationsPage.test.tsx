@@ -170,7 +170,7 @@ describe('ProjectNotificationsPage', () => {
             id: 'dest-2',
             projectId: 'proj-1',
             channel: 'EMAIL',
-            recipientPayload: '{"email":"team@ykanban.dev"}',
+            recipientPayload: '{"to":["team@ykanban.dev"]}',
             events: ['CARD_CREATED', 'CARD_MOVED', 'CARD_COMPLETED'],
             active: true,
           })
@@ -195,11 +195,55 @@ describe('ProjectNotificationsPage', () => {
     await waitFor(() => {
       expect(createdPayload).toEqual({
         channel: 'EMAIL',
-        recipientPayload: JSON.stringify({ email: 'team@ykanban.dev' }),
+        recipientPayload: JSON.stringify({ to: ['team@ykanban.dev'] }),
         events: ['CARD_CREATED', 'CARD_MOVED', 'CARD_COMPLETED'],
         active: true,
       })
     })
+  })
+
+  // Reproduz o bug real reportado: o modal ficava "sem fazer nada" numa falha (400 de payload
+  // inválido) porque nada renderizava createMutation.error - a requisição de fato saía e o
+  // backend de fato respondia, só que o usuário nunca via isso.
+  it('shows the backend error message instead of silently doing nothing when creation fails', async () => {
+    const user = userEvent.setup()
+
+    mockFetchRouter([
+      destinationsHandler([]),
+      {
+        match: (url, method) => url.includes('/notification-destinations') && method === 'POST',
+        respond: () =>
+          jsonResponse(
+            {
+              type: 'about:blank',
+              title: 'Destino de notificação inválido',
+              status: 400,
+              detail: 'Destino de notificação inválido para o canal selecionado.',
+              errors: ['recipient.to: deve ser uma lista não vazia de e-mails'],
+            },
+            400,
+          ),
+      },
+      projectHandler(),
+      notificationsListHandler([]),
+    ])
+
+    renderPage()
+
+    const addBtn = await screen.findByRole('button', { name: /Adicionar Destino/i })
+    await user.click(addBtn)
+
+    const input = screen.getByLabelText(/Endereço de E-mail/i)
+    await user.type(input, 'invalido')
+
+    const saveBtn = screen.getByRole('button', { name: /Salvar Destino/i })
+    await user.click(saveBtn)
+
+    expect(await screen.findByTestId('create-destination-error')).toHaveTextContent(
+      'Destino de notificação inválido para o canal selecionado.',
+    )
+    // O modal nunca fecha silenciosamente numa falha - o usuário continua vendo o formulário e o erro.
+    expect(screen.getByText('Novo Destino de Notificação')).toBeInTheDocument()
   })
 
   describe('notification delivery history', () => {

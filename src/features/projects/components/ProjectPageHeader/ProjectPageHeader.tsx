@@ -6,7 +6,7 @@ import styles from './ProjectPageHeader.module.css'
 
 interface Props {
   project: Project
-  active: 'kanban' | 'dashboard' | 'notifications'
+  active: 'kanban' | 'dashboard' | 'notifications' | 'repositories'
 }
 
 /** Compartilhado entre `ProjectDetailPage` (Kanban), `ProjectDashboardPage` e `ProjectNotificationsPage` — mesma identidade
@@ -47,6 +47,13 @@ export function ProjectPageHeader({ project, active }: Props) {
           aria-current={active === 'notifications' ? 'page' : undefined}
         >
           Notificações
+        </Link>
+        <Link
+          to={ROUTES.projectRepositories(project.id)}
+          className={styles.tab}
+          aria-current={active === 'repositories' ? 'page' : undefined}
+        >
+          Repositórios
         </Link>
       </nav>
     </>

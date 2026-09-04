@@ -31,5 +31,6 @@ export const ROUTES = {
   projectDetail: (id: string) => `/projects/${id}`,
   projectDashboard: (id: string) => `/projects/${id}/dashboard`,
   projectNotifications: (id: string) => `/projects/${id}/notifications`,
+  projectRepositories: (id: string) => `/projects/${id}/repositories`,
   cardDetail: (projectId: string, cardId: string) => `/projects/${projectId}/cards/${cardId}`,
 } as const

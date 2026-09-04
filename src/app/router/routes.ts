@@ -32,5 +32,7 @@ export const ROUTES = {
   projectDashboard: (id: string) => `/projects/${id}/dashboard`,
   projectNotifications: (id: string) => `/projects/${id}/notifications`,
   projectRepositories: (id: string) => `/projects/${id}/repositories`,
+  projectRepositoryTechnicalConfiguration: (projectId: string, repositoryId: string) =>
+    `/projects/${projectId}/repositories/${repositoryId}/technical-configuration`,
   cardDetail: (projectId: string, cardId: string) => `/projects/${projectId}/cards/${cardId}`,
 } as const

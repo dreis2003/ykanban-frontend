@@ -25,6 +25,7 @@ import { ProjectDashboardPage } from '@/app/pages/ProjectDashboardPage/ProjectDa
 import { ProjectDetailPage } from '@/app/pages/ProjectDetailPage/ProjectDetailPage'
 import { ProjectNotificationsPage } from '@/app/pages/ProjectNotificationsPage/ProjectNotificationsPage'
 import { ProjectRepositoriesPage } from '@/app/pages/ProjectRepositoriesPage/ProjectRepositoriesPage'
+import { ProjectRepositoryTechnicalConfigurationPage } from '@/app/pages/ProjectRepositoryTechnicalConfigurationPage/ProjectRepositoryTechnicalConfigurationPage'
 import { ProjectsPage } from '@/app/pages/ProjectsPage/ProjectsPage'
 import { SelectOrganizationPage } from '@/app/pages/SelectOrganizationPage/SelectOrganizationPage'
 import { TenantIntegrationsPage } from '@/app/pages/TenantIntegrationsPage/TenantIntegrationsPage'
@@ -101,6 +102,10 @@ export const router = createBrowserRouter([
       { path: '/projects/:projectId/dashboard', element: <ProjectDashboardPage /> },
       { path: '/projects/:projectId/notifications', element: <ProjectNotificationsPage /> },
       { path: '/projects/:projectId/repositories', element: <ProjectRepositoriesPage /> },
+      {
+        path: '/projects/:projectId/repositories/:repositoryId/technical-configuration',
+        element: <ProjectRepositoryTechnicalConfigurationPage />,
+      },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

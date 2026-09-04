@@ -371,4 +371,16 @@ describe('ProjectRepositoriesPage', () => {
     expect(screen.getByRole('link', { name: 'Projetos' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Repositórios' })).toHaveAttribute('aria-current', 'page')
   })
+
+  it('cada repositório oferece um link para sua configuração técnica', async () => {
+    mockFetchRouter([projectHandler(), listHandler([BACKEND_REPO])])
+
+    renderPage('DEVELOPER')
+    await screen.findByRole('heading', { name: 'Backend' })
+
+    expect(screen.getByRole('link', { name: 'Configuração técnica' })).toHaveAttribute(
+      'href',
+      '/projects/p1/repositories/r1/technical-configuration',
+    )
+  })
 })

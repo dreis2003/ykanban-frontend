@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+import { ROUTES } from '@/app/router/routes'
 import { REPOSITORY_KIND_LABELS } from '@/features/repositories/types'
 import type { GitRepository } from '@/features/repositories/types'
 import { StatusBadge } from '@/shared/components/StatusBadge/StatusBadge'
@@ -65,22 +67,30 @@ export function RepositoryRow({ repository, canManage, onEdit, onArchive, onReac
         </dl>
       </div>
 
-      {canManage ? (
-        <div className={styles.actions}>
-          <button type="button" className={styles.actionButton} onClick={onEdit}>
-            Editar
-          </button>
-          {repository.status === 'ACTIVE' ? (
-            <button type="button" className={styles.actionButton} onClick={onArchive}>
-              Arquivar
+      <div className={styles.actions}>
+        <Link
+          to={ROUTES.projectRepositoryTechnicalConfiguration(repository.projectId, repository.id)}
+          className={styles.actionButton}
+        >
+          Configuração técnica
+        </Link>
+        {canManage ? (
+          <>
+            <button type="button" className={styles.actionButton} onClick={onEdit}>
+              Editar
             </button>
-          ) : (
-            <button type="button" className={styles.actionButton} onClick={onReactivate}>
-              Reativar
-            </button>
-          )}
-        </div>
-      ) : null}
+            {repository.status === 'ACTIVE' ? (
+              <button type="button" className={styles.actionButton} onClick={onArchive}>
+                Arquivar
+              </button>
+            ) : (
+              <button type="button" className={styles.actionButton} onClick={onReactivate}>
+                Reativar
+              </button>
+            )}
+          </>
+        ) : null}
+      </div>
     </article>
   )
 }

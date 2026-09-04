@@ -93,6 +93,8 @@
 }
 
 .actionButton {
+  display: inline-flex;
+  align-items: center;
   appearance: none;
   border: var(--border-width) solid var(--color-border-strong);
   border-radius: var(--radius-md);
@@ -102,6 +104,7 @@
   font-weight: var(--font-weight-medium);
   padding: var(--space-1) var(--space-3);
   cursor: pointer;
+  text-decoration: none;
   transition: border-color var(--transition-fast);
 }
 

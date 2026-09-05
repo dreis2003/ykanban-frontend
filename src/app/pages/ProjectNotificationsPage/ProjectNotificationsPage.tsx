@@ -4,7 +4,9 @@ import { Link, useParams } from 'react-router-dom'
 import { ROUTES } from '@/app/router/routes'
 import { useAuth } from '@/features/auth/AuthContext'
 import { integrationsApi } from '@/features/integrations/api/integrationsApi'
+import { availabilityLabel, channelTypeLabel } from '@/features/integrations/labels'
 import type {
+  ChannelPreferenceMode,
   CommunicationChannel,
   NotificationEvent,
   ProjectNotificationDestination,
@@ -102,6 +104,57 @@ export function ProjectNotificationsPage() {
     enabled: Boolean(projectId),
   })
 
+  const { data: projectChannels, isLoading: projectChannelsLoading, isError: projectChannelsError } = useQuery({
+    queryKey: ['project-communication-channels', projectId],
+    queryFn: () => integrationsApi.listProjectChannels(projectId as string),
+    enabled: Boolean(projectId),
+  })
+
+  const { data: channelCatalog } = useQuery({
+    queryKey: ['ycommunication-channel-catalog'],
+    queryFn: () => integrationsApi.listChannelCatalog(),
+  })
+
+  // Qual canal escolher no <select> de OVERRIDE — só um rascunho local até o usuário selecionar de
+  // fato uma configuração; nunca commitado sem um channelConfigurationId real (o backend rejeita
+  // OVERRIDE sem id, ver SetProjectChannelPreferenceRequest).
+  const [showOverrideSelectFor, setShowOverrideSelectFor] = useState<Partial<Record<CommunicationChannel, boolean>>>({})
+
+  const setProjectChannelMutation = useMutation({
+    mutationFn: ({
+      channelType,
+      mode,
+      channelConfigurationId,
+    }: {
+      channelType: CommunicationChannel
+      mode: ChannelPreferenceMode
+      channelConfigurationId?: string
+    }) =>
+      integrationsApi.setProjectChannelPreference(projectId as string, channelType, {
+        mode,
+        ...(channelConfigurationId ? { channelConfigurationId } : {}),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['project-communication-channels', projectId] })
+    },
+  })
+
+  const handleChannelModeChange = (channelType: CommunicationChannel, mode: ChannelPreferenceMode) => {
+    if (mode === 'OVERRIDE') {
+      setShowOverrideSelectFor((prev) => ({ ...prev, [channelType]: true }))
+      return
+    }
+    setShowOverrideSelectFor((prev) => ({ ...prev, [channelType]: false }))
+    setProjectChannelMutation.mutate({ channelType, mode })
+  }
+
+  const handleOverrideChannelSelected = (channelType: CommunicationChannel, channelConfigurationId: string) => {
+    if (!channelConfigurationId) {
+      return
+    }
+    setProjectChannelMutation.mutate({ channelType, mode: 'OVERRIDE', channelConfigurationId })
+  }
+
   const createMutation = useMutation({
     mutationFn: (payload: { channel: CommunicationChannel; recipientPayload: string; events: NotificationEvent[]; active: boolean }) =>
       integrationsApi.createDestination(projectId as string, payload),
@@ -182,6 +235,109 @@ export function ProjectNotificationsPage() {
       </nav>
 
       <ProjectPageHeader project={project} active="notifications" />
+
+      <div className={styles.sectionHeader}>
+        <div>
+          <h2 className={styles.sectionTitle}>Canais do Projeto</h2>
+          <p className={styles.breadcrumbCurrent}>
+            Com qual configuração do YCommunication cada tipo de canal envia neste projeto — herdando o
+            padrão da empresa, usando outra configuração, ou desabilitado.
+          </p>
+        </div>
+      </div>
+
+      {projectChannelsLoading ? <StatusMessage variant="loading" title="Carregando canais do projeto..." /> : null}
+      {projectChannelsError ? <StatusMessage variant="error" title="Não foi possível carregar os canais do projeto." /> : null}
+
+      {projectChannels ? (
+        <div className={styles.channelPreferencesGrid} data-testid="project-channels-grid">
+          {projectChannels.map((pref) => {
+            const optionsForType = (channelCatalog ?? []).filter((entry) => entry.channelType === pref.channelType)
+            const isShowingOverrideSelect = pref.mode === 'OVERRIDE' || Boolean(showOverrideSelectFor[pref.channelType])
+
+            return (
+              <div key={pref.channelType} className={styles.channelPreferenceCard} data-testid={`project-channel-${pref.channelType}`}>
+                <div className={styles.channelPreferenceHeader}>
+                  <span className={styles.channelBadge} data-channel={pref.channelType}>
+                    {pref.channelType}
+                  </span>
+                  <strong>{channelTypeLabel(pref.channelType)}</strong>
+                </div>
+
+                <div className={styles.radioGroup} role="radiogroup" aria-label={`Canal de ${channelTypeLabel(pref.channelType)}`}>
+                  <div className={styles.radioOption}>
+                    <label className={styles.radioOptionLabel}>
+                      <input
+                        type="radio"
+                        name={`channel-mode-${pref.channelType}`}
+                        checked={pref.mode === 'INHERIT'}
+                        onChange={() => handleChannelModeChange(pref.channelType, 'INHERIT')}
+                      />
+                      <span>Usar canal padrão da empresa</span>
+                    </label>
+                    <span className={styles.radioOptionHint}>
+                      {pref.tenantDefault?.displayName ?? 'Nenhum canal padrão de empresa configurado'}
+                    </span>
+                  </div>
+
+                  <div className={styles.radioOption}>
+                    <label className={styles.radioOptionLabel}>
+                      <input
+                        type="radio"
+                        name={`channel-mode-${pref.channelType}`}
+                        checked={pref.mode === 'OVERRIDE'}
+                        onChange={() => handleChannelModeChange(pref.channelType, 'OVERRIDE')}
+                      />
+                      <span>Usar outro canal</span>
+                    </label>
+                    {isShowingOverrideSelect ? (
+                      <select
+                        aria-label={`Canal específico de ${channelTypeLabel(pref.channelType)} para este projeto`}
+                        className={styles.select}
+                        value={pref.mode === 'OVERRIDE' ? pref.projectOverride?.id ?? '' : ''}
+                        onChange={(e) => handleOverrideChannelSelected(pref.channelType, e.target.value)}
+                        disabled={setProjectChannelMutation.isPending}
+                      >
+                        <option value="">Selecione uma configuração...</option>
+                        {optionsForType.map((entry) => (
+                          <option key={entry.id} value={entry.id} disabled={!entry.active}>
+                            {entry.displayName}
+                            {entry.active ? '' : ' (inativo)'}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
+                  </div>
+
+                  <div className={styles.radioOption}>
+                    <label className={styles.radioOptionLabel}>
+                      <input
+                        type="radio"
+                        name={`channel-mode-${pref.channelType}`}
+                        checked={pref.mode === 'DISABLED'}
+                        onChange={() => handleChannelModeChange(pref.channelType, 'DISABLED')}
+                      />
+                      <span>Desabilitar {channelTypeLabel(pref.channelType).toLowerCase()} neste projeto</span>
+                    </label>
+                  </div>
+                </div>
+
+                {pref.mode !== 'DISABLED' && pref.availability && pref.availability !== 'AVAILABLE' ? (
+                  <span className={styles.unavailableWarning}>⚠ {availabilityLabel(pref.availability)}</span>
+                ) : null}
+
+                <div className={styles.effectiveChannelText}>
+                  Canal efetivo:{' '}
+                  {pref.mode === 'DISABLED' ? 'Nenhum (desabilitado)' : pref.effectiveChannel?.displayName ?? 'Não configurado'}
+                  {pref.mode !== 'DISABLED' && pref.effectiveChannel
+                    ? ` (origem: ${pref.effectiveSource === 'TENANT' ? 'padrão da empresa' : 'configuração do projeto'})`
+                    : ''}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : null}
 
       <div className={styles.sectionHeader}>
         <div>

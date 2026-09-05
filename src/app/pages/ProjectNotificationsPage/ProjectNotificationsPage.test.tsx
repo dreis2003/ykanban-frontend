@@ -24,19 +24,39 @@ function pageOf(items: unknown[]) {
   return { content: items, page: 0, size: 20, totalElements: items.length, totalPages: items.length > 0 ? 1 : 0 }
 }
 
+/** Prompt 33.1: toda renderização desta página agora também consulta canais de comunicação
+ * (catálogo + preferências do Project) — nenhum dos testes abaixo verifica essa seção, então os
+ * dois fallbacks abaixo respondem com lista vazia por padrão. Ficam sempre por ÚLTIMO na lista de
+ * handlers (`find` usa o primeiro match) para que um teste que precise verificar esses endpoints
+ * possa continuar passando seu próprio handler explícito antes deles. */
 function mockFetchRouter(handlers: FetchHandler[]) {
   vi.stubGlobal(
     'fetch',
     vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString()
       const method = (init?.method ?? 'GET').toUpperCase()
-      const handler = handlers.find((h) => h.match(url, method))
+      const allHandlers = [...handlers, projectChannelsHandler([]), channelCatalogHandler([])]
+      const handler = allHandlers.find((h) => h.match(url, method))
       if (!handler) {
         return Promise.reject(new Error(`fetch inesperado: ${method} ${url}`))
       }
       return Promise.resolve(handler.respond(init))
     }),
   )
+}
+
+function projectChannelsHandler(items: unknown[]): FetchHandler {
+  return {
+    match: (url, method) => url.includes('/communication-channels') && method === 'GET',
+    respond: () => jsonResponse(items),
+  }
+}
+
+function channelCatalogHandler(items: unknown[]): FetchHandler {
+  return {
+    match: (url, method) => url.includes('/integrations/ycommunication/channels') && method === 'GET',
+    respond: () => jsonResponse(items),
+  }
 }
 
 const PROJECT_RESPONSE = { id: 'proj-1', code: 'YK', name: 'YKanban Core', status: 'ACTIVE' }
@@ -50,7 +70,11 @@ function destinationsHandler(items: unknown[] = []): FetchHandler {
 
 function projectHandler(): FetchHandler {
   return {
-    match: (url, method) => url.includes('/projects/proj-1') && !url.includes('/notifications') && method === 'GET',
+    match: (url, method) =>
+      url.includes('/projects/proj-1') &&
+      !url.includes('/notifications') &&
+      !url.includes('/communication-channels') &&
+      method === 'GET',
     respond: () => jsonResponse(PROJECT_RESPONSE),
   }
 }
@@ -450,6 +474,162 @@ describe('ProjectNotificationsPage', () => {
       await waitFor(() => {
         expect(screen.queryByRole('dialog', { name: 'Detalhe da notificação' })).not.toBeInTheDocument()
       })
+    })
+  })
+
+  describe('Canais do Projeto', () => {
+    const CATALOG = [
+      { id: 'chan-gmail', channelType: 'EMAIL', name: 'Gmail', displayName: 'Gmail Corporativo', active: true },
+      { id: 'chan-brevo', channelType: 'EMAIL', name: 'Brevo', displayName: 'Brevo Sistema', active: true },
+    ]
+
+    function projectChannelsHandlerWith(items: unknown[]): FetchHandler {
+      return {
+        match: (url, method) => url.includes('/communication-channels') && method === 'GET',
+        respond: () => jsonResponse(items),
+      }
+    }
+
+    function channelCatalogHandlerWith(items: unknown[]): FetchHandler {
+      return {
+        match: (url, method) => url.includes('/integrations/ycommunication/channels') && method === 'GET',
+        respond: () => jsonResponse(items),
+      }
+    }
+
+    const INHERIT_EMAIL_PREF = {
+      channelType: 'EMAIL',
+      mode: 'INHERIT',
+      tenantDefault: { id: 'chan-gmail', displayName: 'Gmail Corporativo', availability: 'AVAILABLE' },
+      projectOverride: null,
+      effectiveChannel: { id: 'chan-gmail', displayName: 'Gmail Corporativo', availability: 'AVAILABLE' },
+      effectiveSource: 'TENANT',
+      availability: 'AVAILABLE',
+    }
+
+    it('shows the inherited tenant default and effective channel', async () => {
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        projectChannelsHandlerWith([INHERIT_EMAIL_PREF]),
+        channelCatalogHandlerWith(CATALOG),
+      ])
+
+      renderPage()
+
+      expect(await screen.findByTestId('project-channel-EMAIL')).toBeInTheDocument()
+      expect(screen.getAllByText('Gmail Corporativo').length).toBeGreaterThan(0)
+      expect(screen.getByText(/Canal efetivo:/)).toHaveTextContent('Gmail Corporativo')
+      expect(screen.getByText(/origem: padrão da empresa/)).toBeInTheDocument()
+    })
+
+    it('selecting "Usar outro canal" reveals a dropdown and saves an OVERRIDE on selection', async () => {
+      const user = userEvent.setup()
+      let savedPayload: unknown = null
+
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        projectChannelsHandlerWith([INHERIT_EMAIL_PREF]),
+        channelCatalogHandlerWith(CATALOG),
+        {
+          match: (url, method) => url.includes('/communication-channels/EMAIL') && method === 'PUT',
+          respond: (init) => {
+            savedPayload = JSON.parse(init?.body as string)
+            return jsonResponse({
+              channelType: 'EMAIL',
+              mode: 'OVERRIDE',
+              tenantDefault: INHERIT_EMAIL_PREF.tenantDefault,
+              projectOverride: { id: 'chan-brevo', displayName: 'Brevo Sistema', availability: 'AVAILABLE' },
+              effectiveChannel: { id: 'chan-brevo', displayName: 'Brevo Sistema', availability: 'AVAILABLE' },
+              effectiveSource: 'PROJECT',
+              availability: 'AVAILABLE',
+            })
+          },
+        },
+      ])
+
+      renderPage()
+
+      const card = await screen.findByTestId('project-channel-EMAIL')
+      await user.click(within(card).getByLabelText('Usar outro canal'))
+
+      const select = await within(card).findByLabelText('Canal específico de E-mail para este projeto')
+      await user.selectOptions(select, 'chan-brevo')
+
+      await waitFor(() => expect(savedPayload).toEqual({ mode: 'OVERRIDE', channelConfigurationId: 'chan-brevo' }))
+    })
+
+    it('selecting "Desabilitar" immediately disables the channel for this project', async () => {
+      const user = userEvent.setup()
+      let savedPayload: unknown = null
+      // GET stateful o suficiente para refletir a invalidação de query disparada após o PUT —
+      // sem isso o teste não conseguiria distinguir "mutação enviada" de "UI realmente atualizada".
+      let currentPreference: Record<string, unknown> = INHERIT_EMAIL_PREF
+
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        {
+          match: (url, method) => url.includes('/communication-channels') && !url.includes('/EMAIL') && method === 'GET',
+          respond: () => jsonResponse([currentPreference]),
+        },
+        channelCatalogHandlerWith(CATALOG),
+        {
+          match: (url, method) => url.includes('/communication-channels/EMAIL') && method === 'PUT',
+          respond: (init) => {
+            savedPayload = JSON.parse(init?.body as string)
+            currentPreference = {
+              channelType: 'EMAIL',
+              mode: 'DISABLED',
+              tenantDefault: INHERIT_EMAIL_PREF.tenantDefault,
+              projectOverride: null,
+              effectiveChannel: null,
+              effectiveSource: 'DISABLED',
+              availability: null,
+            }
+            return jsonResponse(currentPreference)
+          },
+        },
+      ])
+
+      renderPage()
+
+      const card = await screen.findByTestId('project-channel-EMAIL')
+      await user.click(within(card).getByLabelText(/Desabilitar e-mail neste projeto/i))
+
+      await waitFor(() => expect(savedPayload).toEqual({ mode: 'DISABLED' }))
+      expect(await within(card).findByText(/Nenhum \(desabilitado\)/)).toBeInTheDocument()
+    })
+
+    it('shows a warning when the effective channel is configured but unavailable — never falls back silently', async () => {
+      mockFetchRouter([
+        destinationsHandler([]),
+        projectHandler(),
+        notificationsListHandler([]),
+        projectChannelsHandlerWith([
+          {
+            channelType: 'EMAIL',
+            mode: 'OVERRIDE',
+            tenantDefault: { id: 'chan-gmail', displayName: 'Gmail Corporativo', availability: 'AVAILABLE' },
+            projectOverride: { id: 'chan-removed', displayName: 'Gmail-X', availability: 'CONFIGURED_BUT_UNAVAILABLE' },
+            effectiveChannel: { id: 'chan-removed', displayName: 'Gmail-X', availability: 'CONFIGURED_BUT_UNAVAILABLE' },
+            effectiveSource: 'PROJECT',
+            availability: 'CONFIGURED_BUT_UNAVAILABLE',
+          },
+        ]),
+        channelCatalogHandlerWith(CATALOG),
+      ])
+
+      renderPage()
+
+      const card = await screen.findByTestId('project-channel-EMAIL')
+      expect(within(card).getByText(/Canal configurado indisponível no YCommunication/)).toBeInTheDocument()
+      // Nunca cai silenciosamente para o default do Tenant (Gmail Corporativo) — continua mostrando Gmail-X.
+      expect(within(card).getByText(/Canal efetivo:/)).toHaveTextContent('Gmail-X')
     })
   })
 })

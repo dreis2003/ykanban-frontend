@@ -1,7 +1,12 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { integrationsApi } from '@/features/integrations/api/integrationsApi'
-import type { DeliveryReceiptStatus, TestConnectionResponse } from '@/features/integrations/types'
+import { availabilityLabel, channelTypeLabel } from '@/features/integrations/labels'
+import type {
+  CommunicationChannel,
+  DeliveryReceiptStatus,
+  TestConnectionResponse,
+} from '@/features/integrations/types'
 import { StatusBadge } from '@/shared/components/StatusBadge/StatusBadge'
 import { StatusMessage } from '@/shared/components/StatusMessage/StatusMessage'
 import styles from './TenantIntegrationsPage.module.css'
@@ -13,6 +18,8 @@ const DELIVERY_RECEIPT_STATUSES: DeliveryReceiptStatus[] = [
   'FAILED',
   'DEAD_LETTER',
 ]
+
+const CHANNEL_TYPES: CommunicationChannel[] = ['EMAIL', 'TELEGRAM', 'WHATSAPP', 'WEBHOOK']
 
 const MIN_SIGNING_SECRET_LENGTH = 16
 
@@ -44,6 +51,48 @@ export function TenantIntegrationsPage() {
     queryFn: integrationsApi.getDeliveryReceiptConfig,
     enabled: apiKeyConfigured,
   })
+
+  const {
+    data: channelPreferences,
+    isLoading: isLoadingChannelPreferences,
+    isError: isChannelPreferencesError,
+  } = useQuery({
+    queryKey: ['ycommunication-channel-preferences'],
+    queryFn: integrationsApi.listChannelPreferences,
+    enabled: apiKeyConfigured,
+  })
+
+  const {
+    data: channelCatalog,
+    isError: isChannelCatalogError,
+  } = useQuery({
+    queryKey: ['ycommunication-channel-catalog'],
+    queryFn: () => integrationsApi.listChannelCatalog(),
+    enabled: apiKeyConfigured,
+  })
+
+  const setChannelPreferenceMutation = useMutation({
+    mutationFn: ({ channelType, channelConfigurationId }: { channelType: CommunicationChannel; channelConfigurationId: string }) =>
+      integrationsApi.setChannelPreference(channelType, { channelConfigurationId }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['ycommunication-channel-preferences'] })
+    },
+  })
+
+  const clearChannelPreferenceMutation = useMutation({
+    mutationFn: (channelType: CommunicationChannel) => integrationsApi.clearChannelPreference(channelType),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['ycommunication-channel-preferences'] })
+    },
+  })
+
+  const handleChannelPreferenceChange = (channelType: CommunicationChannel, channelConfigurationId: string) => {
+    if (channelConfigurationId === '') {
+      clearChannelPreferenceMutation.mutate(channelType)
+    } else {
+      setChannelPreferenceMutation.mutate({ channelType, channelConfigurationId })
+    }
+  }
 
   const setSigningSecretMutation = useMutation({
     mutationFn: integrationsApi.setDeliveryReceiptSigningSecret,
@@ -217,6 +266,76 @@ export function TenantIntegrationsPage() {
             </div>
           </form>
         </div>
+      ) : null}
+
+      {!isLoading && !isError ? (
+      <div className={styles.card} data-testid="channel-preferences-card">
+        <div className={styles.cardHeader}>
+          <div>
+            <h2 className={styles.cardTitle}>Canais Padrão</h2>
+            <p className={styles.helperText}>
+              Configuração do YCommunication usada por padrão em cada tipo de canal, para todos os projetos
+              que não sobrescreverem individualmente.
+            </p>
+          </div>
+        </div>
+
+        {!apiKeyConfigured ? (
+          <StatusMessage
+            variant="empty"
+            title="Configure a API Key do YCommunication na seção acima primeiro"
+            description="Os canais padrão da empresa ficam disponíveis depois que a integração YCommunication estiver ativa."
+          />
+        ) : null}
+
+        {apiKeyConfigured && isLoadingChannelPreferences ? (
+          <StatusMessage variant="loading" title="Carregando canais padrão..." />
+        ) : null}
+
+        {apiKeyConfigured && (isChannelPreferencesError || isChannelCatalogError) ? (
+          <StatusMessage variant="error" title="Não foi possível carregar os canais padrão." />
+        ) : null}
+
+        {apiKeyConfigured && channelPreferences && channelCatalog ? (
+          <div className={styles.channelsList} data-testid="tenant-channels-list">
+            {CHANNEL_TYPES.map((channelType) => {
+              const preference = channelPreferences.find((p) => p.channelType === channelType)
+              const optionsForType = channelCatalog.filter((entry) => entry.channelType === channelType)
+              const currentValue = preference?.channel?.id ?? ''
+
+              return (
+                <div key={channelType} className={styles.channelRow} data-testid={`tenant-channel-row-${channelType}`}>
+                  <span className={styles.channelLabel}>{channelTypeLabel(channelType)}</span>
+                  <div className={styles.field}>
+                    <select
+                      aria-label={`Canal padrão de ${channelTypeLabel(channelType)}`}
+                      className={styles.input}
+                      value={currentValue}
+                      onChange={(e) => handleChannelPreferenceChange(channelType, e.target.value)}
+                      disabled={setChannelPreferenceMutation.isPending || clearChannelPreferenceMutation.isPending}
+                    >
+                      <option value="">Nenhum canal padrão de {channelTypeLabel(channelType).toLowerCase()} configurado</option>
+                      {optionsForType.map((entry) => (
+                        <option key={entry.id} value={entry.id} disabled={!entry.active}>
+                          {entry.displayName}
+                          {entry.active ? '' : ' (inativo)'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {preference ? (
+                    <span className={styles.availabilityText} data-availability={preference.availability}>
+                      {preference.channel?.displayName
+                        ? `${preference.channel.displayName} — ${availabilityLabel(preference.availability)}`
+                        : availabilityLabel(preference.availability)}
+                    </span>
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
+        ) : null}
+      </div>
       ) : null}
 
       {!isLoading && !isError && apiKeyConfigured ? (

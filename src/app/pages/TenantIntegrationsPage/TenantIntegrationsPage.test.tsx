@@ -19,13 +19,23 @@ function jsonResponse(body: unknown, status = 200): Response {
   } as Response
 }
 
+/** Prompt 33.1: quando a integração está configurada, esta página também consulta o catálogo de
+ * canais e as preferências padrão — nenhum dos testes abaixo verifica essa seção, então os dois
+ * fallbacks respondem com lista vazia por padrão, sempre por ÚLTIMO (`find` usa o primeiro match)
+ * para que um teste que precise verificar esses endpoints possa continuar passando seu próprio
+ * handler explícito antes deles. */
 function mockFetchRouter(handlers: FetchHandler[]) {
   vi.stubGlobal(
     'fetch',
     vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString()
       const method = (init?.method ?? 'GET').toUpperCase()
-      const handler = handlers.find((h) => h.match(url, method))
+      const allHandlers = [
+        ...handlers,
+        { match: (u: string, m: string) => u.includes('/channel-preferences') && m === 'GET', respond: () => jsonResponse([]) },
+        { match: (u: string, m: string) => u.includes('/integrations/ycommunication/channels') && m === 'GET', respond: () => jsonResponse([]) },
+      ]
+      const handler = allHandlers.find((h) => h.match(url, method))
       if (!handler) {
         return Promise.reject(new Error(`fetch inesperado: ${method} ${url}`))
       }
@@ -63,7 +73,10 @@ describe('TenantIntegrationsPage', () => {
           }),
       },
       {
-        match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
+        match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') &&
+          !url.includes('/channel-preferences') &&
+          !url.includes('/integrations/ycommunication/channels') &&
+          method === 'GET',
         respond: () =>
           jsonResponse({
             configured: true,
@@ -100,7 +113,10 @@ describe('TenantIntegrationsPage', () => {
           }),
       },
       {
-        match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
+        match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') &&
+          !url.includes('/channel-preferences') &&
+          !url.includes('/integrations/ycommunication/channels') &&
+          method === 'GET',
         respond: () =>
           jsonResponse({
             configured: true,
@@ -140,7 +156,10 @@ describe('TenantIntegrationsPage', () => {
 
     mockFetchRouter([
       {
-        match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
+        match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') &&
+          !url.includes('/channel-preferences') &&
+          !url.includes('/integrations/ycommunication/channels') &&
+          method === 'GET',
         respond: () => jsonResponse({ configured: false, active: false, baseUrl: 'http://localhost:8080' }),
       },
       {
@@ -181,7 +200,10 @@ describe('TenantIntegrationsPage', () => {
     it('prompts to configure the API Key first when the integration is not configured yet', async () => {
       mockFetchRouter([
         {
-          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
+          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') &&
+          !url.includes('/channel-preferences') &&
+          !url.includes('/integrations/ycommunication/channels') &&
+          method === 'GET',
           respond: () => jsonResponse({ configured: false, active: false, baseUrl: 'http://localhost:8080' }),
         },
       ])
@@ -207,7 +229,10 @@ describe('TenantIntegrationsPage', () => {
             }),
         },
         {
-          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
+          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') &&
+          !url.includes('/channel-preferences') &&
+          !url.includes('/integrations/ycommunication/channels') &&
+          method === 'GET',
           respond: () =>
             jsonResponse({ configured: true, id: 'int-1', baseUrl: 'http://localhost:8080', active: true }),
         },
@@ -247,7 +272,10 @@ describe('TenantIntegrationsPage', () => {
             }),
         },
         {
-          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
+          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') &&
+          !url.includes('/channel-preferences') &&
+          !url.includes('/integrations/ycommunication/channels') &&
+          method === 'GET',
           respond: () =>
             jsonResponse({ configured: true, id: 'int-1', baseUrl: 'http://localhost:8080', active: true }),
         },
@@ -273,7 +301,10 @@ describe('TenantIntegrationsPage', () => {
           respond: () => jsonResponse({ configured: true, signingSecretConfigured: false }),
         },
         {
-          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
+          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') &&
+          !url.includes('/channel-preferences') &&
+          !url.includes('/integrations/ycommunication/channels') &&
+          method === 'GET',
           respond: () =>
             jsonResponse({ configured: true, id: 'int-1', baseUrl: 'http://localhost:8080', active: true }),
         },
@@ -314,7 +345,10 @@ describe('TenantIntegrationsPage', () => {
           respond: () => jsonResponse({ configured: true, signingSecretConfigured: false }),
         },
         {
-          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
+          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') &&
+          !url.includes('/channel-preferences') &&
+          !url.includes('/integrations/ycommunication/channels') &&
+          method === 'GET',
           respond: () =>
             jsonResponse({ configured: true, id: 'int-1', baseUrl: 'http://localhost:8080', active: true }),
         },
@@ -350,7 +384,10 @@ describe('TenantIntegrationsPage', () => {
           respond: () => jsonResponse({ configured: true, signingSecretConfigured: false }),
         },
         {
-          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') && method === 'GET',
+          match: (url, method) => url.includes('/tenants/current/integrations/ycommunication') &&
+          !url.includes('/channel-preferences') &&
+          !url.includes('/integrations/ycommunication/channels') &&
+          method === 'GET',
           respond: () =>
             jsonResponse({ configured: true, id: 'int-1', baseUrl: 'http://localhost:8080', active: true }),
         },
@@ -365,6 +402,96 @@ describe('TenantIntegrationsPage', () => {
       await user.click(saveBtn)
 
       expect(await screen.findByTestId('signing-secret-save-error')).toBeInTheDocument()
+    })
+  })
+
+  describe('Canais Padrão', () => {
+    function integrationHandler() {
+      return {
+        match: (url: string, method: string) =>
+          url.includes('/tenants/current/integrations/ycommunication') &&
+          !url.includes('/channel-preferences') &&
+          !url.includes('/integrations/ycommunication/channels') &&
+          method === 'GET',
+        respond: () => jsonResponse({ configured: true, id: 'int-1', baseUrl: 'http://localhost:8080', maskedApiKey: 'ycom_***', active: true }),
+      }
+    }
+
+    function deliveryReceiptsHandler() {
+      return {
+        match: (url: string, method: string) => url.includes('/delivery-receipts') && method === 'GET',
+        respond: () => jsonResponse({ configured: false, signingSecretConfigured: false }),
+      }
+    }
+
+    function catalogHandler(items: unknown[]) {
+      return {
+        match: (url: string, method: string) => url.includes('/integrations/ycommunication/channels') && method === 'GET',
+        respond: () => jsonResponse(items),
+      }
+    }
+
+    function preferencesHandler(items: unknown[]) {
+      return {
+        match: (url: string, method: string) => url.includes('/channel-preferences') && method === 'GET',
+        respond: () => jsonResponse(items),
+      }
+    }
+
+    const CATALOG = [
+      { id: 'chan-gmail', channelType: 'EMAIL', name: 'Gmail', displayName: 'Gmail Corporativo', active: true },
+      { id: 'chan-brevo', channelType: 'EMAIL', name: 'Brevo', displayName: 'Brevo Sistema', active: true },
+    ]
+
+    it('lists all four channel types with their current default and availability', async () => {
+      mockFetchRouter([
+        integrationHandler(),
+        deliveryReceiptsHandler(),
+        catalogHandler(CATALOG),
+        preferencesHandler([
+          { channelType: 'EMAIL', channel: { id: 'chan-gmail', displayName: 'Gmail Corporativo', availability: 'AVAILABLE' }, availability: 'AVAILABLE' },
+          { channelType: 'TELEGRAM', channel: null, availability: 'UNCONFIGURED' },
+          { channelType: 'WHATSAPP', channel: null, availability: 'UNCONFIGURED' },
+          { channelType: 'WEBHOOK', channel: null, availability: 'UNCONFIGURED' },
+        ]),
+      ])
+
+      renderPage()
+
+      const list = await screen.findByTestId('tenant-channels-list')
+      expect(list).toBeInTheDocument()
+      expect(await screen.findByText(/Gmail Corporativo — Ativo/)).toBeInTheDocument()
+      expect(screen.getAllByText('Nenhum canal configurado')).toHaveLength(3)
+    })
+
+    it('selecting a channel from the dropdown saves it as the tenant default', async () => {
+      const user = userEvent.setup()
+      let savedPayload: unknown = null
+
+      mockFetchRouter([
+        integrationHandler(),
+        deliveryReceiptsHandler(),
+        catalogHandler(CATALOG),
+        preferencesHandler([{ channelType: 'EMAIL', channel: null, availability: 'UNCONFIGURED' }]),
+        {
+          match: (url, method) => url.includes('/channel-preferences/EMAIL') && method === 'PUT',
+          respond: (init) => {
+            savedPayload = JSON.parse(init?.body as string)
+            return jsonResponse({
+              channelType: 'EMAIL',
+              channel: { id: 'chan-brevo', displayName: 'Brevo Sistema', availability: 'AVAILABLE' },
+              availability: 'AVAILABLE',
+            })
+          },
+        },
+      ])
+
+      renderPage()
+
+      const select = await screen.findByLabelText('Canal padrão de E-mail')
+      await user.selectOptions(select, 'chan-brevo')
+
+      await waitFor(() => expect(savedPayload).toEqual({ channelConfigurationId: 'chan-brevo' }))
     })
   })
 })

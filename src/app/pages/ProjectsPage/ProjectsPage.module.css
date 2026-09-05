@@ -152,6 +152,7 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  align-items: stretch;
   gap: var(--space-4);
   transition: opacity var(--transition-fast);
 }

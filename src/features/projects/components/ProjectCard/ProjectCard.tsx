@@ -15,7 +15,7 @@ interface Props {
 
 export function ProjectCard({ project, canManage, onEdit, onArchive, onActivate }: Props) {
   return (
-    <article className={styles.card}>
+    <article className={styles.card} data-testid="project-card">
       <Link to={ROUTES.projectDetail(project.id)} className={styles.openLink}>
         <div className={styles.header}>
           <span className={styles.code}>{project.code}</span>
@@ -27,7 +27,7 @@ export function ProjectCard({ project, canManage, onEdit, onArchive, onActivate 
       </Link>
 
       {canManage ? (
-        <div className={styles.actions}>
+        <div className={styles.actions} data-testid="project-card-actions">
           <button type="button" className={styles.actionButton} onClick={onEdit}>
             Editar
           </button>
